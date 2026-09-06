@@ -1,98 +1,101 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  useColorScheme,
+  TouchableOpacity,
+  Pressable,
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+} from "react-native";
+import { Link, useRouter } from "expo-router";
+import { ThemedButtonPrimary } from "@/components/ThemedButton";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+// Changed to default export
+export default function WelcomeScreen() {
+  const isDark = useColorScheme() === "dark";
+  const router = useRouter();
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
+      <View style={styles.content}>
+        <Text style={[styles.brand, { color: "#006837" }]}>RICHFIELD</Text>
+        <Text
+          style={[styles.subtitle, isDark ? styles.darkSub : styles.lightSub]}
+        >
+          Graduate Institute of Technology
+        </Text>
+      </View>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      <View style={styles.footer}>
+        <ThemedButtonPrimary
+          title="Get Started"
+          onPress={() => router.push("/(auth)/role")}
+        />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <TouchableOpacity
+          style={styles.linkWrapper}
+          onPress={() => router.push("/(auth)/login")}
+        >
+          <Text
+            style={[
+              styles.linkText,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+          >
+            I already have an account
+          </Text>
+        </TouchableOpacity>
+        {/* Temporary Dev Button */}
+        <Link href="/student/home" asChild>
+          <Pressable
+            style={{ padding: 12, backgroundColor: "#007AFF", borderRadius: 8 }}
+          >
+            <Text style={{ color: "white", fontWeight: "bold" }}>
+              DEV: Go to /students
+            </Text>
+          </Pressable>
+        </Link>
+        <Link href="/admin/dashboard" asChild>
+          <Pressable
+            style={{ padding: 12, backgroundColor: "#007AFF", borderRadius: 8 }}
+          >
+            <Text style={{ color: "white", fontWeight: "bold" }}>
+              DEV: Go to /admin
+            </Text>
+          </Pressable>
+        </Link>
+        <Link href="/business/home" asChild>
+          <Pressable
+            style={{ padding: 12, backgroundColor: "#007AFF", borderRadius: 8 }}
+          >
+            <Text style={{ color: "white", fontWeight: "bold" }}>
+              DEV: Go to /business
+            </Text>
+          </Pressable>
+        </Link>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    paddingHorizontal: 24,
+    justifyContent: "space-between",
+    paddingVertical: 48,
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  lightBg: { backgroundColor: "#FFFFFF" },
+  darkBg: { backgroundColor: "#111827" },
+  content: { flex: 1, justifyContent: "center", alignItems: "center" },
+  brand: { fontSize: 36, fontWeight: "800", letterSpacing: 2 },
+  subtitle: { fontSize: 16, marginTop: 8, textAlign: "center" },
+  lightSub: { color: "#4B5563" },
+  darkSub: { color: "#9CA3AF" },
+  footer: { width: "100%", alignItems: "center" },
+  linkWrapper: { marginTop: 16, paddingVertical: 8 },
+  linkText: { fontSize: 15, fontWeight: "500" },
+  lightText: { color: "#006837" },
+  darkText: { color: "#008748" },
 });
