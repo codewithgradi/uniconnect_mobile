@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "shifield",
-    "slug": "shifield",
+    "name": "uniconnect_mobile",
+    "slug": "uniconnect_mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "shifield",
+    "scheme": "uniconnectmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
