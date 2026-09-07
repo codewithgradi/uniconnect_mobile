@@ -1,108 +1,18 @@
-import React from "react";
+import { opportunitiesApi, opportunityKeys } from "@/api/opportunity.api"; // Adjust path to your api file if needed
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useQuery } from "@tanstack/react-query";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
   useColorScheme,
-  Alert,
+  View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
-
-export interface StudentOpportunityDetailDto {
-  id: string;
-  title: string;
-  jobType: string;
-  location: string;
-  salaryRange: string;
-  description: string;
-  requirements: string[];
-  createdAt: string;
-  business: {
-    id: string;
-    companyName: string;
-    industry: string;
-    website: string;
-    email: string;
-    verificationStatus: "Verified" | "Pending" | "Unverified";
-  };
-}
-
-const MOCK_OPPORTUNITIES: Record<string, StudentOpportunityDetailDto> = {
-  "1": {
-    id: "1",
-    title: "Mobile App Developer Intern",
-    jobType: "Internship",
-    location: "Cape Town, South Africa",
-    salaryRange: "R8,000 - R12,000 / month",
-    description:
-      "Looking for a passionate Flutter & React Native Developer Intern to build cross-platform mobile applications.",
-    requirements: [
-      "Basic TypeScript or Dart experience",
-      "RESTful API integration",
-      "Git version control",
-      "Team player with learning mindset",
-    ],
-    createdAt: "Posted 1h ago",
-    business: {
-      id: "b1",
-      companyName: "CodeLabs",
-      industry: "Software Development",
-      website: "https://codelabs.co.za",
-      email: "careers@codelabs.co.za",
-      verificationStatus: "Verified",
-    },
-  },
-  "2": {
-    id: "2",
-    title: "Junior Frontend Developer",
-    jobType: "Full-time",
-    location: "Johannesburg, South Africa",
-    salaryRange: "R20,000 - R28,000 / month",
-    description:
-      "Join our product team to build responsive interfaces in Next.js, React Native, and Tailwind CSS.",
-    requirements: [
-      "HTML, CSS, TypeScript",
-      "React / Next.js framework fundamentals",
-      "RESTful endpoint integration",
-    ],
-    createdAt: "Posted 3h ago",
-    business: {
-      id: "b2",
-      companyName: "CreativeTech",
-      industry: "Digital Agency",
-      website: "https://creativetech.dev",
-      email: "hr@creativetech.dev",
-      verificationStatus: "Verified",
-    },
-  },
-  "3": {
-    id: "3",
-    title: "Data Science Intern",
-    jobType: "Internship",
-    location: "Pretoria, South Africa",
-    salaryRange: "R10,000 - R15,000 / month",
-    description:
-      "Analyze dataset trends, build predictive models, and generate analytical dashboards.",
-    requirements: [
-      "Python & Pandas/PyTorch",
-      "SQL database querying",
-      "Basic statistics background",
-    ],
-    createdAt: "Posted 5h ago",
-    business: {
-      id: "b3",
-      companyName: "DataNova",
-      industry: "Analytics & AI",
-      website: "https://datanova.ai",
-      email: "jobs@datanova.ai",
-      verificationStatus: "Verified",
-    },
-  },
-};
 
 export default function StudentOpportunityDetailScreen() {
   const isDark = useColorScheme() === "dark";
@@ -110,15 +20,21 @@ export default function StudentOpportunityDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const details =
-    id && MOCK_OPPORTUNITIES[id]
-      ? MOCK_OPPORTUNITIES[id]
-      : MOCK_OPPORTUNITIES["1"];
+  const {
+    data: opportunity,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: opportunityKeys.detail(id || ""),
+    queryFn: () => opportunitiesApi.getById(id!),
+    enabled: !!id,
+  });
 
   const handleApply = () => {
+    if (!opportunity) return;
     Alert.alert(
       "Application Sent",
-      `Your profile and CV have been submitted for ${details.title}.`,
+      `Your profile and CV have been submitted for ${opportunity.title}.`,
       [{ text: "OK", onPress: () => router.back() }],
     );
   };
@@ -126,6 +42,45 @@ export default function StudentOpportunityDetailScreen() {
   const handleCancel = () => {
     router.back();
   };
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          isDark ? styles.darkBg : styles.lightBg,
+          styles.centered,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+      </View>
+    );
+  }
+
+  if (isError || !opportunity) {
+    return (
+      <View
+        style={[
+          styles.container,
+          isDark ? styles.darkBg : styles.lightBg,
+          styles.centered,
+        ]}
+      >
+        <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+        <Text
+          style={[
+            styles.errorText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Failed to load opportunity details.
+        </Text>
+        <TouchableOpacity style={styles.applyBtn} onPress={() => router.back()}>
+          <Text style={styles.applyBtnText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -144,17 +99,21 @@ export default function StudentOpportunityDetailScreen() {
           <Text
             style={[styles.title, isDark ? styles.darkText : styles.lightText]}
           >
-            {details.title}
+            {opportunity.title}
           </Text>
 
           <View style={styles.metaRow}>
-            <View style={styles.typeBadge}>
-              <Text style={styles.typeBadgeText}>{details.jobType}</Text>
-            </View>
-            <Text style={styles.metaText}>{details.location}</Text>
+            {opportunity.targetProgramme ? (
+              <View style={styles.typeBadge}>
+                <Text style={styles.typeBadgeText}>
+                  {opportunity.targetProgramme}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.metaText}>
+              Posted {new Date(opportunity.createdAtUtc).toLocaleDateString()}
+            </Text>
           </View>
-
-          <Text style={styles.salaryText}>{details.salaryRange}</Text>
 
           <Text
             style={[
@@ -164,60 +123,25 @@ export default function StudentOpportunityDetailScreen() {
           >
             Description
           </Text>
-          <Text style={styles.bodyText}>{details.description}</Text>
-
-          <Text
-            style={[
-              styles.subHeading,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Requirements
-          </Text>
-          {details.requirements.map((req, idx) => (
-            <View key={idx} style={styles.bulletRow}>
-              <Text style={styles.bulletPoint}>•</Text>
-              <Text style={styles.bodyText}>{req}</Text>
-            </View>
-          ))}
+          <Text style={styles.bodyText}>{opportunity.description}</Text>
         </View>
 
-        {/* Business Info Card */}
+        {/* Status / Metadata Card */}
         <View
           style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}
         >
           <View style={styles.businessHeader}>
-            <Text style={styles.sectionBadge}>COMPANY INFO</Text>
+            <Text style={styles.sectionBadge}>STATUS INFO</Text>
             <View style={styles.statusChip}>
-              <Text style={styles.statusChipText}>
-                {details.business.verificationStatus}
-              </Text>
+              <Text style={styles.statusChipText}>{opportunity.status}</Text>
             </View>
           </View>
-
-          <Text
-            style={[
-              styles.companyName,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            {details.business.companyName}
-          </Text>
-
           <View style={styles.infoGrid}>
             <View style={styles.infoItem}>
-              <Ionicons name="briefcase-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>{details.business.industry}</Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Ionicons name="mail-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>{details.business.email}</Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Ionicons name="globe-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>{details.business.website}</Text>
+              <Ionicons name="business-outline" size={16} color="#6B7280" />
+              <Text style={styles.infoLabel}>
+                Business Profile ID: {opportunity.businessProfileId}
+              </Text>
             </View>
           </View>
         </View>
@@ -244,6 +168,7 @@ export default function StudentOpportunityDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centered: { justifyContent: "center", alignItems: "center", padding: 20 },
   scrollContent: { padding: 20 },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
@@ -265,27 +190,18 @@ const styles = StyleSheet.create({
   },
   typeBadgeText: { color: "#0284C7", fontSize: 11, fontWeight: "700" },
   metaText: { fontSize: 12, color: "#6B7280" },
-  salaryText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#006837",
-    marginTop: 10,
-  },
   subHeading: {
     fontSize: 14,
     fontWeight: "700",
     marginTop: 16,
     marginBottom: 6,
   },
-  bodyText: { fontSize: 13, color: "#6B7280", lineHeight: 18, flex: 1 },
-  bulletRow: { flexDirection: "row", gap: 6, marginBottom: 4 },
-  bulletPoint: { color: "#006837", fontSize: 14 },
+  bodyText: { fontSize: 13, color: "#6B7280", lineHeight: 18 },
   businessHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  companyName: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
   statusChip: {
     backgroundColor: "#D1FAE5",
     paddingHorizontal: 8,
@@ -293,9 +209,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   statusChipText: { fontSize: 10, fontWeight: "800", color: "#065F46" },
-  infoGrid: { gap: 10 },
+  infoGrid: { gap: 10, marginTop: 8 },
   infoItem: { flexDirection: "row", alignItems: "center", gap: 8 },
   infoLabel: { fontSize: 12, color: "#6B7280" },
+  errorText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginVertical: 12,
+    textAlign: "center",
+  },
   actionBar: {
     position: "absolute",
     bottom: 0,

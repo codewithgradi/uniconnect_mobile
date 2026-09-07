@@ -2,464 +2,470 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
   useColorScheme,
 } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-
-interface Comment {
-  id: string;
-  author: string;
-  handle: string;
-  content: string;
-  createdAt: string;
-}
-
-interface Post {
-  id: string;
-  author: string;
-  handle: string;
-  content: string;
-  createdAt: string;
-  likes: number;
-  isLiked?: boolean;
-  comments: Comment[];
-  isCommentsOpen?: boolean;
-}
+import { Ionicons } from "@expo/vector-icons";
+import { usePosts } from "@/api/hooks/usePosts";
 
 export default function FeedScreen() {
-  const isDark = useColorScheme() === "dark";
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const {
+    posts,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    createPost,
+    isCreatingPost,
+    toggleLike,
+    addComment,
+  } = usePosts();
+
   const [postContent, setPostContent] = useState("");
-  const [commentInputs, setCommentInputs] = useState<Record<string, string>>(
-    {},
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
+    null,
   );
+  const [commentText, setCommentText] = useState("");
 
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: "1",
-      author: "Gradi Puata",
-      handle: "@gradipuata",
-      content:
-        "Just submitted my latest project! React Native and .NET Clean Architecture make a great stack. 🚀 #developer #reactnative",
-      createdAt: "10m",
-      likes: 12,
-      comments: [
-        {
-          id: "c1",
-          author: "FitlaHoops Dev",
-          handle: "@fitlahoops",
-          content: "Clean Architecture on .NET is top tier! Great work.",
-          createdAt: "5m",
-        },
-      ],
-      isCommentsOpen: false,
-    },
-    {
-      id: "2",
-      author: "FitlaHoops Dev",
-      handle: "@fitlahoops",
-      content:
-        "Campus tournament registration closes this Friday. Make sure your team roster is updated!",
-      createdAt: "2h",
-      likes: 34,
-      comments: [],
-      isCommentsOpen: false,
-    },
-  ]);
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const handleLoadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
   };
 
-  const handleCreatePost = () => {
-    if (!postContent.trim()) return;
-
-    const newPost: Post = {
-      id: Date.now().toString(),
-      author: "Gradi Puata",
-      handle: "@gradipuata",
-      content: postContent,
-      createdAt: "Just now",
-      likes: 0,
-      comments: [],
-      isCommentsOpen: false,
-    };
-
-    setPosts([newPost, ...posts]);
-    setPostContent("");
+  const handleCreatePost = async () => {
+    if (!postContent.trim() || isCreatingPost) return;
+    try {
+      await createPost({ content: postContent.trim() });
+      setPostContent("");
+    } catch (error) {
+      console.error("Failed to create post", error);
+    }
   };
 
-  const toggleLike = (id: string) => {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === id
-          ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            }
-          : post,
-      ),
+  const handleLikePost = async (postId: string) => {
+    try {
+      await toggleLike(postId);
+    } catch (error) {
+      console.error("Failed to like post", error);
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!commentText.trim()) return;
+    try {
+      await addComment({ postId, content: commentText.trim() });
+      setCommentText("");
+      setActiveCommentPostId(null);
+    } catch (error) {
+      console.error("Failed to add comment", error);
+    }
+  };
+
+  // Theme matching the headerTintColor / tab bar setup
+  const theme = {
+    bg: isDark ? "#111827" : "#006837",
+    cardBg: isDark ? "#1F2937" : "#FFF",
+    text: isDark ? "#FFFFFF" : "#111827",
+    subText: isDark ? "#9CA3AF" : "#666",
+    border: isDark ? "#374151" : "#EAEAEA",
+    inputBg: isDark ? "#374151" : "#F1F3F4",
+    commentBg: isDark ? "#374151" : "#F9F9F9",
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.centerContainer, { backgroundColor: theme.bg }]}>
+        <ActivityIndicator size="large" color="#FFF" />
+      </View>
     );
-  };
+  }
 
-  const toggleComments = (id: string) => {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === id
-          ? { ...post, isCommentsOpen: !post.isCommentsOpen }
-          : post,
-      ),
+  if (isError) {
+    return (
+      <View style={[styles.centerContainer, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.errorText, { color: theme.subText }]}>
+          Failed to load feed. Pull down to retry.
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: "#FFF" }]}
+          onPress={() => refetch()}
+        >
+          <Text style={[styles.retryButtonText, { color: theme.bg }]}>
+            Retry
+          </Text>
+        </TouchableOpacity>
+      </View>
     );
-  };
-
-  const handleAddComment = (postId: string) => {
-    const text = commentInputs[postId];
-    if (!text || !text.trim()) return;
-
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      author: "Gradi Puata",
-      handle: "@gradipuata",
-      content: text.trim(),
-      createdAt: "Just now",
-    };
-
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              comments: [...post.comments, newComment],
-            }
-          : post,
-      ),
-    );
-
-    setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
-  };
+  }
 
   return (
-    <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={[styles.container, { backgroundColor: theme.bg }]}
+      keyboardVerticalOffset={90}
+    >
       <FlatList
         data={posts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        contentContainerStyle={styles.listContainer}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor="#FFF"
+          />
+        }
         ListHeaderComponent={
           <View
             style={[
-              styles.createPostCard,
-              isDark ? styles.darkCard : styles.lightCard,
+              styles.composerContainer,
+              {
+                backgroundColor: theme.cardBg,
+                borderBottomColor: theme.border,
+              },
             ]}
           >
-            <View style={styles.inputRow}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>
-                  {getInitials("Gradi Puata")}
-                </Text>
-              </View>
-
-              <TextInput
-                placeholder="What's happening?"
-                placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
-                multiline
-                value={postContent}
-                onChangeText={setPostContent}
-                style={[
-                  styles.input,
-                  isDark ? styles.darkText : styles.lightText,
-                ]}
-              />
-            </View>
-
-            <View style={styles.createPostFooter}>
+            <TextInput
+              style={[styles.composerInput, { color: theme.text }]}
+              placeholder="What's on your mind?"
+              placeholderTextColor={isDark ? "#9CA3AF" : "#888"}
+              multiline
+              value={postContent}
+              onChangeText={setPostContent}
+            />
+            <View style={styles.composerActions}>
               <TouchableOpacity
                 style={[
                   styles.postButton,
-                  !postContent.trim() && styles.disabledButton,
+                  { backgroundColor: isDark ? "#006837" : "#006837" },
+                  (!postContent.trim() || isCreatingPost) &&
+                    styles.postButtonDisabled,
                 ]}
                 onPress={handleCreatePost}
-                disabled={!postContent.trim()}
+                disabled={!postContent.trim() || isCreatingPost}
               >
-                <Text style={styles.postButtonText}>Post</Text>
+                {isCreatingPost ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.postButtonText}>Post</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item: post }) => (
           <View
             style={[
               styles.postCard,
-              isDark ? styles.darkCard : styles.lightCard,
+              {
+                backgroundColor: theme.cardBg,
+                borderBottomColor: theme.border,
+              },
             ]}
           >
-            <View style={styles.postMainRow}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>
-                  {getInitials(item.author)}
-                </Text>
+            {/* Author Info */}
+            <View style={styles.postHeader}>
+              <View
+                style={[
+                  styles.avatarPlaceholder,
+                  { backgroundColor: isDark ? "#006837" : "#006837" },
+                ]}
+              >
+                <Text style={styles.avatarText}>{post.author.charAt(0)}</Text>
               </View>
-
-              <View style={styles.postBody}>
-                <View style={styles.headerRow}>
-                  <Text
-                    style={[
-                      styles.author,
-                      isDark ? styles.darkText : styles.lightText,
-                    ]}
-                  >
-                    {item.author}
-                  </Text>
-                  <Text style={styles.handle}>
-                    {item.handle} • {item.createdAt}
-                  </Text>
-                </View>
-
-                <Text
-                  style={[
-                    styles.content,
-                    isDark ? styles.darkText : styles.lightText,
-                  ]}
-                >
-                  {item.content}
+              <View style={styles.authorMeta}>
+                <Text style={[styles.authorName, { color: theme.text }]}>
+                  {post.author}
                 </Text>
-
-                {/* Interaction Row (Comments + Likes only) */}
-                <View style={styles.interactionRow}>
-                  <TouchableOpacity
-                    style={styles.interactionBtn}
-                    onPress={() => toggleComments(item.id)}
-                  >
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={16}
-                      color={item.isCommentsOpen ? "#006837" : "#6B7280"}
-                    />
-                    <Text
-                      style={[
-                        styles.interactionText,
-                        item.isCommentsOpen && { color: "#006837" },
-                      ]}
-                    >
-                      {item.comments.length}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.interactionBtn}
-                    onPress={() => toggleLike(item.id)}
-                  >
-                    <Ionicons
-                      name={item.isLiked ? "heart" : "heart-outline"}
-                      size={16}
-                      color={item.isLiked ? "#E11D48" : "#6B7280"}
-                    />
-                    <Text
-                      style={[
-                        styles.interactionText,
-                        item.isLiked && { color: "#E11D48" },
-                      ]}
-                    >
-                      {item.likes}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <Text style={[styles.authorHandle, { color: theme.subText }]}>
+                  {post.handle} • {post.createdAt}
+                </Text>
               </View>
             </View>
 
-            {/* Expandable Comment Section */}
-            {item.isCommentsOpen && (
+            {/* Post Content */}
+            <Text style={[styles.postContent, { color: theme.text }]}>
+              {post.content}
+            </Text>
+
+            {/* Post Actions (Like / Comment Count) */}
+            <View style={[styles.postFooter, { borderTopColor: theme.border }]}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                activeOpacity={0.7}
+                onPress={() => handleLikePost(post.id)}
+              >
+                <Ionicons
+                  name={post.isLiked ? "heart" : "heart-outline"}
+                  size={20}
+                  color={post.isLiked ? "#E0245E" : theme.subText}
+                />
+                <Text
+                  style={[
+                    styles.actionText,
+                    { color: theme.subText },
+                    post.isLiked && styles.activeActionText,
+                  ]}
+                >
+                  {post.likes}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                activeOpacity={0.7}
+                onPress={() =>
+                  setActiveCommentPostId(
+                    activeCommentPostId === post.id ? null : post.id,
+                  )
+                }
+              >
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={18}
+                  color={theme.subText}
+                />
+                <Text style={[styles.actionText, { color: theme.subText }]}>
+                  {post.comments.length}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Comments Section */}
+            {post.comments.length > 0 && (
               <View
                 style={[
-                  styles.commentSection,
-                  isDark
-                    ? styles.darkCommentSection
-                    : styles.lightCommentSection,
+                  styles.commentsContainer,
+                  { backgroundColor: theme.commentBg },
                 ]}
               >
-                {/* List of existing comments */}
-                {item.comments.map((comment) => (
+                {post.comments.map((comment) => (
                   <View key={comment.id} style={styles.commentItem}>
-                    <View style={styles.smallAvatarCircle}>
-                      <Text style={styles.smallAvatarText}>
-                        {getInitials(comment.author)}
-                      </Text>
-                    </View>
-                    <View style={styles.commentBody}>
-                      <View style={styles.headerRow}>
-                        <Text
-                          style={[
-                            styles.commentAuthor,
-                            isDark ? styles.darkText : styles.lightText,
-                          ]}
-                        >
-                          {comment.author}
-                        </Text>
-                        <Text style={styles.handle}>{comment.createdAt}</Text>
-                      </View>
+                    <Text style={[styles.commentAuthor, { color: theme.text }]}>
+                      {comment.author}{" "}
                       <Text
                         style={[
                           styles.commentContent,
-                          isDark ? styles.darkText : styles.lightText,
+                          { color: isDark ? "#D1D5DB" : "#444" },
                         ]}
                       >
                         {comment.content}
                       </Text>
-                    </View>
+                    </Text>
                   </View>
                 ))}
+              </View>
+            )}
 
-                {/* Comment Input Box */}
-                <View style={styles.commentInputRow}>
-                  <TextInput
-                    placeholder="Write a comment..."
-                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
-                    value={commentInputs[item.id] || ""}
-                    onChangeText={(text) =>
-                      setCommentInputs((prev) => ({ ...prev, [item.id]: text }))
-                    }
-                    style={[
-                      styles.commentInput,
-                      isDark ? styles.darkInput : styles.lightInput,
-                      isDark ? styles.darkText : styles.lightText,
-                    ]}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.sendBtn,
-                      !commentInputs[item.id]?.trim() && styles.disabledButton,
-                    ]}
-                    disabled={!commentInputs[item.id]?.trim()}
-                    onPress={() => handleAddComment(item.id)}
-                  >
-                    <Ionicons name="send" size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
+            {/* Comment Input Drawer (Conditional) */}
+            {activeCommentPostId === post.id && (
+              <View style={styles.commentComposer}>
+                <TextInput
+                  style={[
+                    styles.commentInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      color: theme.text,
+                    },
+                  ]}
+                  placeholder="Write a comment..."
+                  placeholderTextColor={isDark ? "#9CA3AF" : "#888"}
+                  value={commentText}
+                  onChangeText={setCommentText}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.commentSendButton,
+                    { backgroundColor: "#006837" },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => handleAddComment(post.id)}
+                >
+                  <Ionicons name="send" size={16} color="#FFF" />
+                </TouchableOpacity>
               </View>
             )}
           </View>
         )}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color="#FFF" />
+            </View>
+          ) : null
+        }
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  lightBg: { backgroundColor: "#FFFFFF" },
-  darkBg: { backgroundColor: "#111827" },
-  createPostCard: {
-    padding: 16,
-    borderBottomWidth: 1,
+  container: {
+    flex: 1,
   },
-  inputRow: { flexDirection: "row", gap: 12 },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#006837",
+  centerContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
-  avatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
-  input: { flex: 1, fontSize: 15, minHeight: 50, textAlignVertical: "top" },
-  createPostFooter: {
+  errorText: {
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontWeight: "600",
+  },
+  listContainer: {
+    paddingBottom: 24,
+  },
+  composerContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    marginBottom: 8,
+  },
+  composerInput: {
+    fontSize: 15,
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  composerActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: 10,
+    marginTop: 8,
   },
   postButton: {
-    backgroundColor: "#006837",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    minWidth: 70,
+    alignItems: "center",
   },
-  disabledButton: { opacity: 0.5 },
-  postButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  postButtonDisabled: {
+    opacity: 0.6,
+  },
+  postButtonText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: 14,
+  },
   postCard: {
     padding: 16,
+    marginBottom: 8,
     borderBottomWidth: 1,
   },
-  postMainRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  postBody: { flex: 1 },
-  headerRow: {
+  postHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  author: { fontWeight: "700", fontSize: 14 },
-  handle: { color: "#9CA3AF", fontSize: 12 },
-  content: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  interactionRow: {
-    flexDirection: "row",
-    gap: 24,
-  },
-  interactionBtn: { flexDirection: "row", alignItems: "center", gap: 6 },
-  interactionText: { fontSize: 12, color: "#6B7280" },
-
-  /* Comments Section Styling */
-  commentSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  lightCommentSection: { borderTopColor: "#F3F4F6" },
-  darkCommentSection: { borderTopColor: "#374151" },
-  commentItem: {
-    flexDirection: "row",
-    gap: 10,
     marginBottom: 10,
   },
-  smallAvatarCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#008748",
+  avatarPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
+    marginRight: 10,
   },
-  smallAvatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 11 },
-  commentBody: { flex: 1 },
-  commentAuthor: { fontWeight: "600", fontSize: 13 },
-  commentContent: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  commentInputRow: {
+  avatarText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  authorMeta: {
+    flex: 1,
+  },
+  authorName: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  authorHandle: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  postContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  postFooter: {
     flexDirection: "row",
-    gap: 8,
+    borderTopWidth: 1,
+    paddingTop: 10,
+  },
+  actionButton: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    marginRight: 24,
+  },
+  actionText: {
+    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  activeActionText: {
+    color: "#E0245E",
+  },
+  commentsContainer: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 8,
+  },
+  commentItem: {
+    marginBottom: 6,
+  },
+  commentAuthor: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  commentContent: {
+    fontWeight: "normal",
+  },
+  commentComposer: {
+    flexDirection: "row",
+    marginTop: 10,
+    alignItems: "center",
   },
   commentInput: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
-    fontSize: 13,
-    borderWidth: 1,
-  },
-  lightInput: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
-  darkInput: { backgroundColor: "#1F2937", borderColor: "#374151" },
-  sendBtn: {
-    backgroundColor: "#006837",
-    width: 32,
-    height: 32,
     borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: 13,
+    maxHeight: 80,
+  },
+  commentSendButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 8,
   },
-
-  lightCard: { backgroundColor: "#FFFFFF", borderBottomColor: "#E5E7EB" },
-  darkCard: { backgroundColor: "#111827", borderBottomColor: "#374151" },
-  lightText: { color: "#111827" },
-  darkText: { color: "#FFFFFF" },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
 });

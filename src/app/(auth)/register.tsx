@@ -5,18 +5,22 @@ import {
   StyleSheet,
   ScrollView,
   useColorScheme,
+  Alert,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedInput } from "../../components/ThemedInput";
 import { ThemedButtonPrimary } from "@/components/ThemedButton";
 import { UserRole } from "./role";
+import { useRegister, useSendOtp } from "@/api/hooks/useAuth";
+import { UserType } from "@/api/auth";
 
-// Changed to default export
 export default function RegisterScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: UserRole }>();
-  const userType = params.role || "Student";
+  const rawRole = params.role || "Student";
+  const userType = rawRole.toLowerCase() as UserType;
 
   const [formData, setFormData] = useState({
     email: "",
@@ -28,20 +32,87 @@ export default function RegisterScreen() {
     studentNumber: "",
   });
 
-  const isAcademicRole = userType === "Student" || userType === "Alumni";
-  const isBusinessRole = userType === "Business";
+  const { mutate: register, isPending: isRegistering } = useRegister();
+  const { mutate: sendOtp, isPending: isSendingOtp } = useSendOtp();
+
+  const isAcademicRole = userType === "student" || userType === "alumni";
+  const isBusinessRole = userType === "business";
+  const isLoading = isRegistering || isSendingOtp;
+
+  const showNotification = (title: string, message: string) => {
+    if (Platform.OS === "web") {
+      window.alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
 
   const handleRegister = () => {
-    if (userType === "Student") {
-      router.push({
-        pathname: "/(auth)/verification",
-        params: { email: formData.email },
-      });
+    console.log("👉 1. Register Button Pressed");
+    console.log("Payload:", { ...formData, userType });
+
+    if (!formData.email || !formData.password) {
+      console.warn("❌ Validation Failed: Missing Email or Password");
+      showNotification("Validation Error", "Email and password are required.");
+      return;
     }
+
+    const payload = {
+      email: formData.email,
+      password: formData.password,
+      userType,
+      firstName: isAcademicRole ? formData.firstName : undefined,
+      lastName: isAcademicRole ? formData.lastName : undefined,
+      programme: isAcademicRole ? formData.programme : undefined,
+      studentNumber: isAcademicRole ? formData.studentNumber : undefined,
+      companyName: isBusinessRole ? formData.companyName : undefined,
+    };
+
+    console.log("👉 2. Dispatching register mutation...");
+
+    register(payload, {
+      onSuccess: (data) => {
+        console.log("✅ 3. Registration Successful Response:", data);
+
+        sendOtp(
+          { email: formData.email },
+          {
+            onSuccess: () => {
+              console.log("✅ 4. OTP Sent successfully. Navigating...");
+              router.push({
+                pathname: "/(auth)/verification",
+                params: { email: formData.email },
+              });
+            },
+            onError: (err: any) => {
+              console.error("❌ 4. OTP Dispatch Failed:", err);
+              showNotification(
+                "Account Created",
+                "Account created, but failed to send verification code. Proceeding to verification page.",
+              );
+              router.push({
+                pathname: "/(auth)/verification",
+                params: { email: formData.email },
+              });
+            },
+          },
+        );
+      },
+      onError: (err: any) => {
+        console.error("❌ 3. Registration Request Failed:", err);
+        const message =
+          err?.response?.data?.detail ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Registration failed. Check connection or inputs.";
+        showNotification("Registration Failed", message);
+      },
+    });
   };
 
   return (
     <ScrollView
+      keyboardShouldPersistTaps="handled"
       contentContainerStyle={[
         styles.container,
         isDark ? styles.darkBg : styles.lightBg,
@@ -51,7 +122,7 @@ export default function RegisterScreen() {
         <Text
           style={[styles.title, isDark ? styles.darkText : styles.lightText]}
         >
-          Create {userType} Account
+          Create {rawRole} Account
         </Text>
         <Text style={styles.subtitle}>
           Enter your details below to register
@@ -109,8 +180,9 @@ export default function RegisterScreen() {
         )}
 
         <ThemedButtonPrimary
-          title="Register"
+          title={isLoading ? "Creating Account..." : "Register"}
           onPress={handleRegister}
+          loading={isLoading}
           style={{ marginTop: 24 }}
         />
       </View>

@@ -8,7 +8,6 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import { ThemedInput } from "../../../components/ThemedInput";
 
 export default function StudentHomeScreen() {
   const isDark = useColorScheme() === "dark";
@@ -16,16 +15,7 @@ export default function StudentHomeScreen() {
 
   const quickActions = [
     { title: "Events", icon: "calendar-outline", route: "/student/events" },
-    {
-      title: "Opportunities",
-      icon: "briefcase-outline",
-      route: "/student/opportunities",
-    },
-    {
-      title: "Connections",
-      icon: "people-outline",
-      route: "/student/network",
-    },
+    { title: "Messages", icon: "chatbox-outline", route: "/student/messages" },
     {
       title: "AI Assistant",
       icon: "sparkles-outline",
@@ -36,181 +26,186 @@ export default function StudentHomeScreen() {
   return (
     <ScrollView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
+      showsVerticalScrollIndicator={false}
     >
       {/* Greeting Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerTextContainer}>
           <Text
             style={[
               styles.greeting,
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            Hi, Sarah! 👋
+            Uniconnect
           </Text>
           <Text style={styles.subGreeting}>Ready to learn and grow?</Text>
         </View>
         <TouchableOpacity
           style={styles.profileAvatar}
           onPress={() => router.push("/student/profile")}
+          activeOpacity={0.8}
         >
-          <Text style={styles.avatarText}>SJ</Text>
+          <Text style={styles.avatarText}>UC</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <ThemedInput placeholder="Search people, jobs, events..." />
-      </View>
-
       {/* Quick Access */}
-      <Text
-        style={[
-          styles.sectionTitle,
-          isDark ? styles.darkText : styles.lightText,
-        ]}
-      >
-        Quick Access
-      </Text>
-      <View style={styles.quickAccessGrid}>
-        {quickActions.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.quickCard,
-              isDark ? styles.darkCard : styles.lightCard,
-            ]}
-            onPress={() => router.push(item.route as any)}
-          >
-            <View style={styles.iconCircle}>
-              <Ionicons name={item.icon as any} size={22} color="#006837" />
-            </View>
-            <Text
+      <View style={styles.sectionContainer}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Quick Access
+        </Text>
+        <View style={styles.quickAccessGrid}>
+          {quickActions.map((item, index) => (
+            <TouchableOpacity
+              key={index}
               style={[
-                styles.quickText,
-                isDark ? styles.darkText : styles.lightText,
+                styles.quickCard,
+                isDark ? styles.darkCard : styles.lightCard,
               ]}
+              onPress={() => router.push(item.route as any)}
+              activeOpacity={0.7}
             >
-              {item.title}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Recommended for You */}
-      <Text
-        style={[
-          styles.sectionTitle,
-          isDark ? styles.darkText : styles.lightText,
-        ]}
-      >
-        Recommended for You
-      </Text>
-
-      {/* Recommended Card 1 */}
-      <View
-        style={[
-          styles.recommendCard,
-          isDark ? styles.darkCard : styles.lightCard,
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTag}>New</Text>
-          <Text style={styles.timeText}>2h ago</Text>
+              <View
+                style={[
+                  styles.iconCircle,
+                  isDark ? styles.darkIconCircle : styles.lightIconCircle,
+                ]}
+              >
+                <Ionicons name={item.icon as any} size={22} color="#006837" />
+              </View>
+              <Text
+                style={[
+                  styles.quickText,
+                  isDark ? styles.darkText : styles.lightText,
+                ]}
+              >
+                {item.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <Text
-          style={[
-            styles.cardTitle,
-            isDark ? styles.darkText : styles.lightText,
-          ]}
-        >
-          Software Engineering Internship
-        </Text>
-        <Text style={styles.cardSub}>TechCorp • Cape Town, South Africa</Text>
-        <Text style={styles.cardMeta}>Full-time • Internship</Text>
-      </View>
-
-      {/* Recommended Card 2 */}
-      <View
-        style={[
-          styles.recommendCard,
-          isDark ? styles.darkCard : styles.lightCard,
-        ]}
-      >
-        <Text
-          style={[
-            styles.cardTitle,
-            isDark ? styles.darkText : styles.lightText,
-          ]}
-        >
-          Campus Hackathon 2026
-        </Text>
-        <Text style={styles.cardSub}>Innovation for Impact</Text>
-        <Text style={styles.cardMeta}>1 May 2026 • University Main Hall</Text>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
-  lightBg: { backgroundColor: "#FFFFFF" },
-  darkBg: { backgroundColor: "#111827" },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  lightBg: {
+    backgroundColor: "#F9FAFB",
+  },
+  darkBg: {
+    backgroundColor: "#0B0F17",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 24,
+    marginTop: 20,
+    marginBottom: 24,
+    paddingVertical: 8,
   },
-  greeting: { fontSize: 24, fontWeight: "700" },
-  subGreeting: { fontSize: 14, color: "#6B7280", marginTop: 2 },
+  headerTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  greeting: {
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  subGreeting: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 4,
+    fontWeight: "500",
+  },
   profileAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: "#006837",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#006837",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  avatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
-  searchContainer: { marginVertical: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginVertical: 14 },
-  quickAccessGrid: { flexDirection: "row", justifyContent: "space-between" },
+  avatarText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  sectionContainer: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 14,
+    letterSpacing: -0.3,
+  },
+  quickAccessGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
   quickCard: {
-    width: "22%",
-    paddingVertical: 14,
-    borderRadius: 12,
+    flex: 1,
+    paddingVertical: 18,
+    paddingHorizontal: 8,
+    borderRadius: 16,
     alignItems: "center",
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
-  darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
+  lightCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E5E7EB",
+  },
+  darkCard: {
+    backgroundColor: "#1F2937",
+    borderColor: "#374151",
+  },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#E6F0EB",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  quickText: { fontSize: 11, fontWeight: "600", textAlign: "center" },
-  recommendCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
+  lightIconCircle: {
+    backgroundColor: "#E6F0EB",
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
+  darkIconCircle: {
+    backgroundColor: "rgba(0, 104, 55, 0.15)",
   },
-  cardTag: { color: "#006837", fontWeight: "700", fontSize: 12 },
-  timeText: { color: "#9CA3AF", fontSize: 12 },
-  cardTitle: { fontSize: 16, fontWeight: "700" },
-  cardSub: { color: "#4B5563", fontSize: 14, marginTop: 4 },
-  cardMeta: { color: "#6B7280", fontSize: 12, marginTop: 6 },
-  lightText: { color: "#111827" },
-  darkText: { color: "#FFFFFF" },
+  quickText: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  lightText: {
+    color: "#111827",
+  },
+  darkText: {
+    color: "#F3F4F6",
+  },
 });

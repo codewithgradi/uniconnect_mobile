@@ -1,7 +1,10 @@
+import { useLogin } from "@/api/hooks/useAuth";
 import { ThemedButtonPrimary } from "@/components/ThemedButton";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { jwtDecode } from "jwt-decode";
 import { useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,12 +13,118 @@ import {
 } from "react-native";
 import { ThemedInput } from "../../components/ThemedInput";
 
-// Changed to default export
+interface CustomJwtPayload {
+  user_type?: string;
+  verification_status?: string;
+  is_active?: string;
+  role?: string;
+  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"?: string;
+}
+
 export default function LoginScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
-  const [email, setEmail] = useState("");
+
+  // Params are optional (only populated if redirected right after registration)
+  const params = useLocalSearchParams<{
+    email?: string;
+    userType?: string;
+    role?: string;
+  }>();
+
+  const [email, setEmail] = useState(params.email || "");
   const [password, setPassword] = useState("");
+
+  const { mutate: login, isPending, error } = useLogin();
+
+  const routeByUserRole = (role?: string) => {
+    const normalizedRole = role?.toLowerCase().trim();
+
+    switch (normalizedRole) {
+      case "student":
+      case "alumni":
+        router.replace("/student/(tabs)/home");
+        break;
+      case "business":
+      case "company":
+        router.replace("/business/home");
+        break;
+      case "admin":
+        router.replace("/admin/(tabs)/dashboard");
+        break;
+      default:
+        console.warn("⚠️ Unrecognized or missing user role:", role);
+        Alert.alert(
+          "Login Error",
+          "Unable to determine account type. Please contact support.",
+        );
+        break;
+    }
+  };
+
+  const handleLogin = () => {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !password) {
+      Alert.alert("Validation Error", "Please enter both email and password.");
+      return;
+    }
+
+    login(
+      { email: cleanEmail, password },
+      {
+        onSuccess: (data: any) => {
+          // 1. Locate the access token string in the response
+          const token =
+            data?.accessToken ||
+            data?.token ||
+            data?.jwt ||
+            data?.data?.accessToken;
+
+          let extractedRole: string | undefined = undefined;
+
+          // 2. Decode the JWT to read user_type added by CustomClaimsPrincipalFactory
+          if (
+            token &&
+            typeof token === "string" &&
+            token.split(".").length === 3
+          ) {
+            try {
+              const decoded = jwtDecode<CustomJwtPayload>(token);
+              extractedRole =
+                decoded.user_type ||
+                decoded.role ||
+                decoded[
+                  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+                ];
+            } catch (err) {
+              console.error("Failed to decode JWT token:", err);
+            }
+          }
+
+          // 3. Fallbacks if role wasn't in JWT (direct response props or route params)
+          if (!extractedRole) {
+            extractedRole =
+              data?.userType ||
+              data?.user_type ||
+              data?.role ||
+              data?.user?.userType ||
+              params.userType ||
+              params.role;
+          }
+
+          routeByUserRole(extractedRole);
+        },
+        onError: (err: any) => {
+          const message =
+            err?.response?.data?.detail ||
+            err?.response?.data?.message ||
+            "Invalid email or password. Please try again.";
+          Alert.alert("Login Failed", message);
+        },
+      },
+    );
+  };
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -26,7 +135,7 @@ export default function LoginScreen() {
           Welcome Back
         </Text>
         <Text style={styles.subtitle}>
-          Sign in to access your Richfield portal
+          Sign in to access your UniConnect portal
         </Text>
       </View>
 
@@ -37,21 +146,34 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
         />
         <ThemedInput
           placeholder="Password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoComplete="password"
+          textContentType="password"
         />
+
+        {error && (
+          <Text style={styles.errorText}>
+            {(error as any)?.response?.data?.title ||
+              (error as any)?.response?.data?.detail ||
+              "Invalid login credentials."}
+          </Text>
+        )}
 
         <TouchableOpacity style={styles.forgotBtn}>
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
 
         <ThemedButtonPrimary
-          title="Sign In"
-          onPress={() => {}}
+          title={isPending ? "Signing In..." : "Sign In"}
+          onPress={handleLogin}
+          disabled={isPending}
           style={{ marginTop: 24 }}
         />
       </View>
@@ -88,4 +210,5 @@ const styles = StyleSheet.create({
   footerLink: { alignItems: "center" },
   footerText: { color: "#6B7280", fontSize: 14 },
   linkText: { color: "#006837", fontWeight: "600" },
+  errorText: { color: "#EF4444", marginTop: 8, fontSize: 14 },
 });

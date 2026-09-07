@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,63 +8,54 @@ import {
   useColorScheme,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ThemedInput } from "../../../components/ThemedInput";
-
-interface Message {
-  id: string;
-  senderId: string;
-  text: string;
-  timestamp: string;
-}
+import { useConversation, useSendMessage, MessageDto } from "@/api/hooks/useMessage";
+import { useSignalRMessages } from "@/api/hooks/useMessage";
 
 export default function ChatDetailScreen() {
   const isDark = useColorScheme() === "dark";
   const params = useLocalSearchParams<{ id: string; name?: string }>();
+  const recipientId = params.id;
   const recipientName = params.name || "Chat";
 
   const [messageText, setMessageText] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "1", senderId: "other", text: "Hi Sarah! 👋", timestamp: "10:00 AM" },
-    {
-      id: "2",
-      senderId: "other",
-      text: "How are you doing?",
-      timestamp: "10:01 AM",
-    },
-    {
-      id: "3",
-      senderId: "me",
-      text: "I'm good, thanks! How about you?",
-      timestamp: "10:03 AM",
-    },
-    {
-      id: "4",
-      senderId: "other",
-      text: "Great! I saw your project on GitHub. Very impressive!",
-      timestamp: "10:05 AM",
-    },
-  ]);
+  const flatListRef = useRef<FlatList>(null);
+
+  // Fetch real conversation history via API
+  const { data: messages = [], isLoading } = useConversation(recipientId);
+  const { mutate: sendMessage, isPending: isSending } = useSendMessage();
+
+  // Attach SignalR real-time messaging pipeline for live pushes in this thread
+  useSignalRMessages(recipientId);
 
   const handleSend = () => {
-    if (!messageText.trim()) return;
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: "me",
-      text: messageText,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-    setMessages((prev) => [...prev, newMessage]);
-    setMessageText("");
+    if (!messageText.trim() || !recipientId || isSending) return;
+
+    sendMessage(
+      {
+        receiverId: recipientId,
+        content: messageText.trim(),
+      },
+      {
+        onSuccess: () => {
+          setMessageText("");
+        },
+      },
+    );
   };
 
-  const renderBubble = ({ item }: { item: Message }) => {
-    const isMe = item.senderId === "me";
+  const renderBubble = ({ item }: { item: MessageDto }) => {
+    // If the message senderId matches the recipientId, it's from them ("other"). Otherwise, it's "me".
+    const isMe = item.senderId !== recipientId;
+    const formattedTime = new Date(item.sentAt).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     return (
       <View
         style={[
@@ -92,7 +83,7 @@ export default function ChatDetailScreen() {
                   : styles.lightText,
             ]}
           >
-            {item.text}
+            {item.content}
           </Text>
           <Text
             style={[
@@ -100,7 +91,7 @@ export default function ChatDetailScreen() {
               isMe ? styles.myTimestamp : styles.otherTimestamp,
             ]}
           >
-            {item.timestamp}
+            {formattedTime}
           </Text>
         </View>
       </View>
@@ -131,13 +122,23 @@ export default function ChatDetailScreen() {
         <Text style={styles.onlineStatus}>Online</Text>
       </View>
 
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBubble}
-        contentContainerStyle={styles.chatContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#006837" />
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBubble}
+          contentContainerStyle={styles.chatContent}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
+        />
+      )}
 
       {/* Input Bar */}
       <View style={styles.inputBar}>
@@ -146,8 +147,14 @@ export default function ChatDetailScreen() {
           value={messageText}
           onChangeText={setMessageText}
           style={styles.chatInput}
+          onSubmitEditing={handleSend}
+          returnKeyType="send"
         />
-        <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
+        <TouchableOpacity
+          style={[styles.sendBtn, isSending && styles.disabledBtn]}
+          onPress={handleSend}
+          disabled={isSending}
+        >
           <Ionicons name="send" size={18} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -157,6 +164,7 @@ export default function ChatDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   recipientHeader: {
@@ -203,6 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  disabledBtn: { opacity: 0.6 },
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },

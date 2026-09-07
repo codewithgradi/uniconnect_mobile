@@ -1,7 +1,10 @@
+import { useSendOtp, useVerifyOtp } from "@/api/hooks/useAuth";
 import { ThemedButtonPrimary } from "@/components/ThemedButton";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,12 +14,87 @@ import {
 import { ThemedButtonSecondary } from "../../components/ThemedButtonSecondary";
 import { ThemedInput } from "../../components/ThemedInput";
 
-// Changed to default export
 export default function EmailVerificationScreen() {
   const isDark = useColorScheme() === "dark";
+  const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
   const email = params.email || "student@richfield.ac.za";
-  const [code, setCode] = useState("");
+  const [otp, setotp] = useState("");
+
+  const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOtp();
+  const { mutate: sendOtp, isPending: isResending } = useSendOtp();
+
+  const showAlert = (title: string, message: string, onPress?: () => void) => {
+    if (Platform.OS === "web") {
+      window.alert(`${title}: ${message}`);
+      if (onPress) onPress();
+    } else {
+      Alert.alert(title, message, [
+        {
+          text: "OK",
+          onPress: () => onPress?.(),
+        },
+      ]);
+    }
+  };
+
+  const handleVerify = () => {
+    const cleanOtp = otp.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanOtp || cleanOtp.length < 6) {
+      showAlert(
+        "Invalid OTP",
+        "Please enter a valid 6-digit verification code.",
+      );
+      return;
+    }
+
+    verifyOtp(
+      { email: cleanEmail, otp: cleanOtp },
+      {
+        onSuccess: () => {
+          showAlert(
+            "Success",
+            "Email verified successfully! Please log in.",
+            () => {
+              // Navigation triggers ONLY after user dismisses the dialog
+              router.replace({
+                pathname: "/(auth)/login",
+                params: { email: cleanEmail },
+              });
+            },
+          );
+        },
+        onError: (err: any) => {
+          console.error(
+            "❌ OTP Verification Error:",
+            err?.response?.data || err,
+          );
+          const errorData = err?.response?.data;
+          const message =
+            errorData?.detail ||
+            errorData?.title ||
+            "Invalid or expired code. Try again.";
+          showAlert("Verification Failed", message);
+        },
+      },
+    );
+  };
+
+  const handleResend = () => {
+    sendOtp(
+      { email: email.trim().toLowerCase() },
+      {
+        onSuccess: () => {
+          showAlert("Code Resent", `A new OTP code was sent to ${email}`);
+        },
+        onError: () => {
+          showAlert("Error", "Could not resend OTP. Please try again.");
+        },
+      },
+    );
+  };
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -35,19 +113,24 @@ export default function EmailVerificationScreen() {
       <View style={styles.form}>
         <ThemedInput
           placeholder="6-Digit Verification Code"
-          value={code}
-          onChangeText={setCode}
+          value={otp}
+          onChangeText={setotp}
           keyboardType="number-pad"
           maxLength={6}
           style={{ textAlign: "center", letterSpacing: 8, fontSize: 20 }}
         />
 
         <ThemedButtonPrimary
-          title="Verify Code"
-          onPress={() => {}}
+          title={isVerifying ? "Verifying..." : "Verify Code"}
+          onPress={handleVerify}
+          disabled={isVerifying}
           style={{ marginTop: 20 }}
         />
-        <ThemedButtonSecondary title="Resend Email" onPress={() => {}} />
+        <ThemedButtonSecondary
+          title={isResending ? "Sending..." : "Resend Email"}
+          onPress={handleResend}
+          disabled={isResending}
+        />
       </View>
 
       <TouchableOpacity style={styles.helpText}>

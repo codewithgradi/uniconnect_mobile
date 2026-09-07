@@ -5,50 +5,13 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
   useColorScheme,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ThemedInput } from "../../components/ThemedInput";
-
-// Matching your C# EventDto
-export interface EventDto {
-  Id: string; // Guid
-  Title: string;
-  Description: string;
-  EventDate: string; // DateTime ISO string
-}
-
-// Sample Data matching EventDto structure
-const MOCK_EVENTS: EventDto[] = [
-  {
-    Id: "e1a3b4c5-6d7e-8f90-1a2b-3c4d5e6f7a8b",
-    Title: "Tech Talk: The Future of AI in Higher Ed",
-    Description:
-      "Join industry experts as they discuss how Artificial Intelligence is reshaping modern learning and industry applications.",
-    EventDate: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
-  },
-  {
-    Id: "f2b4c6d8-0e1f-2a3b-4c5d-6e7f8a9b0c1d",
-    Title: "Alumni Networking Evening 2026",
-    Description:
-      "Connect with Richfield graduates working across top tech and business firms in South Africa.",
-    EventDate: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 days from now
-  },
-  {
-    Id: "a3c5e7g9-1h2i-3j4k-5l6m-7n8o9p0q1r2s",
-    Title: "CV & Career Readiness Workshop",
-    Description:
-      "Get real-time feedback on your resume, cover letter, and LinkedIn profile from career advisors.",
-    EventDate: new Date().toISOString(), // Today
-  },
-  {
-    Id: "b4d6f8h0-2i3j-4k5l-6m7n-8o9p0q1r2s3t",
-    Title: "Richfield Innovation Hackathon",
-    Description:
-      "Annual coding challenge focused on solving real-world campus and community challenges.",
-    EventDate: new Date(Date.now() - 86400000 * 7).toISOString(), // 7 days ago
-  },
-];
+import { InstitutionalEventDto, useInstitutionalEvents } from "@/api/hooks/useEvent";
 
 export default function EventsScreen() {
   const isDark = useColorScheme() === "dark";
@@ -56,6 +19,9 @@ export default function EventsScreen() {
   const [activeTab, setActiveTab] = useState<"Upcoming" | "Today" | "Past">(
     "Upcoming",
   );
+
+  const { events, isLoading, isError, refetch, isRefetching } =
+    useInstitutionalEvents();
 
   // Date Formatting Helper
   const formatEventDate = (isoString: string) => {
@@ -72,13 +38,13 @@ export default function EventsScreen() {
     return { day, time };
   };
 
-  // Filter Logic
-  const filteredEvents = MOCK_EVENTS.filter((event) => {
-    const eventDate = new Date(event.EventDate);
+  // Filter Logic mapped to InstitutionalEventDto properties (dateUtc)
+  const filteredEvents = events.filter((event) => {
+    const eventDate = new Date(event.dateUtc);
     const now = new Date();
     const matchesSearch =
-      event.Title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.Description.toLowerCase().includes(searchQuery.toLowerCase());
+      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchQuery.toLowerCase());
 
     const isToday = eventDate.toDateString() === now.toDateString();
     const isUpcoming = eventDate > now && !isToday;
@@ -91,8 +57,14 @@ export default function EventsScreen() {
     return true;
   });
 
-  const renderEventCard = ({ item }: { item: EventDto }) => {
-    const { day, time } = formatEventDate(item.EventDate);
+  // Update your EventCard rendering inside EventsScreen to handle both camelCase and PascalCase safely:
+  const renderEventCard = ({ item }: { item: InstitutionalEventDto }) => {
+    const eventDateStr =
+      item.dateUtc || item.dateUtc || new Date().toISOString();
+    const { day, time } = formatEventDate(eventDateStr);
+
+    const title = item.title || item.title || "Untitled Event";
+    const description = item.description || item.description || "";
 
     return (
       <View style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}>
@@ -110,10 +82,10 @@ export default function EventsScreen() {
         <Text
           style={[styles.title, isDark ? styles.darkText : styles.lightText]}
         >
-          {item.Title}
+          {title}
         </Text>
         <Text style={styles.description} numberOfLines={3}>
-          {item.Description}
+          {description}
         </Text>
 
         <View style={styles.cardFooter}>
@@ -125,6 +97,43 @@ export default function EventsScreen() {
       </View>
     );
   };
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
+        <Text
+          style={[
+            styles.emptyText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Failed to load campus events
+        </Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+          <Text style={styles.retryBtnText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -171,10 +180,17 @@ export default function EventsScreen() {
       {/* Events List */}
       <FlatList
         data={filteredEvents}
-        keyExtractor={(item) => item.Id}
+        keyExtractor={(item) => item.id}
         renderItem={renderEventCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor="#006837"
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="calendar-sharp" size={48} color="#9CA3AF" />
@@ -190,6 +206,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   searchContainer: { marginTop: 16 },
   tabRow: { flexDirection: "row", gap: 10, marginVertical: 16 },
   tabChip: {
@@ -243,6 +265,14 @@ const styles = StyleSheet.create({
     marginTop: 60,
   },
   emptyText: { color: "#9CA3AF", fontSize: 15, marginTop: 10 },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: "#006837",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryBtnText: { color: "#FFFFFF", fontWeight: "600" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
 });

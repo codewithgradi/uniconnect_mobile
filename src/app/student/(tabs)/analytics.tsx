@@ -6,123 +6,93 @@ import {
   ScrollView,
   useColorScheme,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Rect, Text as SvgText, Line } from "react-native-svg";
-
-// Matching your C# DTOs
-export interface RecentApplicationStatusDto {
-  ApplicationId: string; // Guid
-  JobTitle: string;
-  CompanyName: string;
-  Status:
-    | "Submitted"
-    | "Under Review"
-    | "Shortlisted"
-    | "Interview Scheduled"
-    | "Rejected"
-    | string;
-  AppliedAtUtc: string; // DateTime ISO string
-}
-
-export interface StudentAnalyticsDto {
-  StudentId: string; // Guid
-  AppliedJobsCount: number;
-  BookmarkedJobsCount: number;
-  TotalConnections: number;
-  PendingConnectionRequests: number;
-  TotalEndorsementsReceived: number;
-  ProfileViewsCount: number;
-  RecentApplications: RecentApplicationStatusDto[];
-}
-
-// Monthly activity graph payload
-interface ActivityDataPoint {
-  label: string;
-  count: number;
-}
-
-// Mock Data structure
-const MOCK_ANALYTICS: StudentAnalyticsDto = {
-  StudentId: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-  AppliedJobsCount: 14,
-  BookmarkedJobsCount: 8,
-  TotalConnections: 128,
-  PendingConnectionRequests: 5,
-  TotalEndorsementsReceived: 23,
-  ProfileViewsCount: 142,
-  RecentApplications: [
-    {
-      ApplicationId: "a1b2c3d4-0001",
-      JobTitle: "Junior .NET Developer",
-      CompanyName: "Entelect",
-      Status: "Under Review",
-      AppliedAtUtc: new Date(Date.now() - 86400000 * 2).toISOString(),
-    },
-    {
-      ApplicationId: "a1b2c3d4-0002",
-      JobTitle: "Frontend Engineer (React)",
-      CompanyName: "BBD Software",
-      Status: "Shortlisted",
-      AppliedAtUtc: new Date(Date.now() - 86400000 * 5).toISOString(),
-    },
-    {
-      ApplicationId: "a1b2c3d4-0003",
-      JobTitle: "Full Stack Developer Intern",
-      CompanyName: "Derivco",
-      Status: "Interview Scheduled",
-      AppliedAtUtc: new Date(Date.now() - 86400000 * 10).toISOString(),
-    },
-  ],
-};
-
-// Graph data for recent application activity
-const MOCK_GRAPH_DATA: ActivityDataPoint[] = [
-  { label: "Apr", count: 2 },
-  { label: "May", count: 4 },
-  { label: "Jun", count: 1 },
-  { label: "Jul", count: 6 },
-  { label: "Aug", count: 3 },
-  { label: "Sep", count: 5 },
-];
+import { useStudentAnalytics } from "@/api/hooks/useUserAnalytics"; // Adjust path to your TanStack query hook
 
 export default function StudentAnalyticsScreen() {
   const isDark = useColorScheme() === "dark";
-  const data = MOCK_ANALYTICS;
   const screenWidth = Dimensions.get("window").width - 72; // Padding adjustment
 
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString("en-ZA", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
+  // Replace with the logged-in student's actual user/student ID from your auth state/context
+  const studentId = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+
+  const { data, isLoading, error } = useStudentAnalytics(studentId);
+
+  // Map the recent applications received from the API into monthly velocity data points for the graph
+  const getMonthlyVelocityData = (
+    applications: Array<{ appliedAtUtc: string }>,
+  ) => {
+    const counts: { [key: string]: number } = {};
+
+    // Initialize last 6 months or default labels if empty
+    applications.forEach((app) => {
+      const date = new Date(app.appliedAtUtc);
+      const monthLabel = date.toLocaleString("en-ZA", { month: "short" });
+      counts[monthLabel] = (counts[monthLabel] || 0) + 1;
     });
-  };
 
-  const getStatusStyle = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "shortlisted":
-      case "interview scheduled":
-        return { bg: "#D1FAE5", text: "#065F46" };
-      case "under review":
-        return { bg: "#FEF3C7", text: "#92400E" };
-      case "rejected":
-        return { bg: "#FEE2E2", text: "#991B1B" };
-      default:
-        return { bg: "#E0E7FF", text: "#3730A3" };
+    const formattedData = Object.keys(counts).map((label) => ({
+      label,
+      count: counts[label],
+    }));
+
+    // Fallback if no application history exists yet
+    if (formattedData.length === 0) {
+      return [
+        { label: "Apr", count: 0 },
+        { label: "May", count: 0 },
+        { label: "Jun", count: 0 },
+        { label: "Jul", count: 0 },
+        { label: "Aug", count: 0 },
+        { label: "Sep", count: 0 },
+      ];
     }
+
+    return formattedData;
   };
 
-  // Graph render helpers
-  const maxVal = Math.max(...MOCK_GRAPH_DATA.map((d) => d.count), 1);
+  const graphData = data ? getMonthlyVelocityData(data.recentApplications) : [];
+  const maxVal = Math.max(...graphData.map((d) => d.count), 1);
   const chartHeight = 140;
   const barWidth = 24;
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text style={[styles.mutedText, { marginTop: 12 }]}>
+          Loading analytics...
+        </Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <Text style={styles.errorText}>Failed to load student analytics.</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
       showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 32 }}
     >
       {/* Overview Grid */}
       <Text style={styles.sectionTitle}>Overview</Text>
@@ -139,7 +109,7 @@ export default function StudentAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.ProfileViewsCount}
+            {data.profileViewsCount}
           </Text>
           <Text style={styles.statLabel}>Profile Views</Text>
         </View>
@@ -156,7 +126,7 @@ export default function StudentAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.AppliedJobsCount}
+            {data.appliedJobsCount}
           </Text>
           <Text style={styles.statLabel}>Jobs Applied</Text>
         </View>
@@ -173,7 +143,7 @@ export default function StudentAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.TotalConnections}
+            {data.totalConnections}
           </Text>
           <Text style={styles.statLabel}>Connections</Text>
         </View>
@@ -190,7 +160,7 @@ export default function StudentAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.TotalEndorsementsReceived}
+            {data.totalEndorsementsReceived}
           </Text>
           <Text style={styles.statLabel}>Endorsements</Text>
         </View>
@@ -220,11 +190,11 @@ export default function StudentAnalyticsScreen() {
             strokeWidth="1"
           />
 
-          {MOCK_GRAPH_DATA.map((item, index) => {
+          {graphData.map((item, index) => {
             const barHeight = (item.count / maxVal) * (chartHeight - 30);
             const x =
-              index * (screenWidth / MOCK_GRAPH_DATA.length) +
-              screenWidth / MOCK_GRAPH_DATA.length / 4;
+              index * (screenWidth / graphData.length) +
+              screenWidth / graphData.length / 4;
             const y = chartHeight - barHeight;
 
             return (
@@ -266,61 +236,18 @@ export default function StudentAnalyticsScreen() {
           })}
         </Svg>
       </View>
-
-      {/* Recent Applications List */}
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Recent Applications</Text>
-        <Text style={styles.totalCount}>
-          {data.RecentApplications.length} Recent
-        </Text>
-      </View>
-
-      <View style={styles.listContainer}>
-        {data.RecentApplications.map((app) => {
-          const statusStyle = getStatusStyle(app.Status);
-          return (
-            <View
-              key={app.ApplicationId}
-              style={[
-                styles.appCard,
-                isDark ? styles.darkCard : styles.lightCard,
-              ]}
-            >
-              <View style={styles.appMainInfo}>
-                <Text
-                  style={[
-                    styles.jobTitle,
-                    isDark ? styles.darkText : styles.lightText,
-                  ]}
-                >
-                  {app.JobTitle}
-                </Text>
-                <Text style={styles.companyName}>{app.CompanyName}</Text>
-                <Text style={styles.appliedDate}>
-                  Applied: {formatDate(app.AppliedAtUtc)}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: statusStyle.bg },
-                ]}
-              >
-                <Text style={[styles.statusText, { color: statusStyle.text }]}>
-                  {app.Status}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   sectionTitle: {
@@ -331,12 +258,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  totalCount: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
 
   // Grid
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
@@ -356,32 +277,11 @@ const styles = StyleSheet.create({
   chartCard: { padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 4 },
   chartHeader: { fontSize: 15, fontWeight: "700", marginBottom: 12 },
 
-  // Applications
-  listContainer: { paddingBottom: 32 },
-  appCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  appMainInfo: { flex: 1, paddingRight: 8 },
-  jobTitle: { fontSize: 15, fontWeight: "700" },
-  companyName: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  appliedDate: { fontSize: 11, color: "#9CA3AF", marginTop: 6 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { fontSize: 11, fontWeight: "700" },
-
-  // Themes
+  // Themes & States
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
+  mutedText: { color: "#9CA3AF", fontSize: 14 },
+  errorText: { color: "#EF4444", fontSize: 14 },
 });

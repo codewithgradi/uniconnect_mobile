@@ -6,58 +6,41 @@ import {
   FlatList,
   TouchableOpacity,
   useColorScheme,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ThemedInput } from "../../../components/ThemedInput";
-
-export interface ChatThread {
-  id: string;
-  name: string;
-  lastMessage: string;
-  timestamp: string;
-  unreadCount: number;
-  avatarText: string;
-  isOnline: boolean;
-}
-
-const MOCK_CHATS: ChatThread[] = [
-  {
-    id: "1",
-    name: "Lerato Dlamini",
-    lastMessage: "Hey! Are we still meeting for the study group?",
-    timestamp: "2m ago",
-    unreadCount: 2,
-    avatarText: "LD",
-    isOnline: true,
-  },
-  {
-    id: "2",
-    name: "James Mwangi",
-    lastMessage: "Thanks for the feedback on my repo!",
-    timestamp: "15m ago",
-    unreadCount: 0,
-    avatarText: "JM",
-    isOnline: false,
-  },
-  {
-    id: "3",
-    name: "Tech Community Group",
-    lastMessage: "Sarah: Check out this upcoming hackathon!",
-    timestamp: "2h ago",
-    unreadCount: 5,
-    avatarText: "TC",
-    isOnline: true,
-  },
-];
+import {
+  useChatThreads,
+  useUnreadMessageCount,
+  useSignalRMessages,
+  ChatThreadDto,
+} from "@/api/hooks/useMessage";
 
 export default function MessagesScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"Chats" | "Groups">("Chats");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const renderChatItem = ({ item }: { item: ChatThread }) => (
+  // Fetch real data from API
+  const {
+    data: chats = [],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useChatThreads();
+  const { data: unreadData } = useUnreadMessageCount();
+
+  // Initialize global SignalR connection to handle incoming messages & update counts in real-time
+  useSignalRMessages();
+
+  const filteredChats = chats.filter((chat) =>
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const renderChatItem = ({ item }: { item: ChatThreadDto }) => (
     <TouchableOpacity
       style={[styles.chatCard, isDark ? styles.darkCard : styles.lightCard]}
       onPress={() =>
@@ -106,65 +89,50 @@ export default function MessagesScreen() {
         />
       </View>
 
-      {/* Segmented Filter */}
-      <View style={styles.segmentContainer}>
-        {(["Chats", "Groups"] as const).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.segmentBtn,
-              activeTab === tab && styles.activeSegmentBtn,
-            ]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === tab
-                  ? styles.activeSegmentText
-                  : styles.inactiveSegmentText,
-              ]}
-            >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <FlatList
-        data={MOCK_CHATS}
-        keyExtractor={(item) => item.id}
-        renderItem={renderChatItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#006837" />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredChats}
+          keyExtractor={(item) => item.id}
+          renderItem={renderChatItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor="#006837"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="chatbubbles-outline" size={48} color="#9CA3AF" />
+              <Text
+                style={[
+                  styles.emptyText,
+                  isDark ? styles.darkText : styles.lightText,
+                ]}
+              >
+                No messages found.
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  searchContainer: { marginTop: 16 },
-  segmentContainer: {
-    flexDirection: "row",
-    backgroundColor: "#E5E7EB",
-    borderRadius: 8,
-    padding: 3,
-    marginVertical: 14,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderRadius: 6,
-  },
-  activeSegmentBtn: { backgroundColor: "#006837" },
-  segmentText: { fontSize: 13, fontWeight: "600" },
-  activeSegmentText: { color: "#FFFFFF" },
-  inactiveSegmentText: { color: "#4B5563" },
-  listContent: { paddingBottom: 24 },
+  searchContainer: { marginTop: 16, marginBottom: 14 },
+  listContent: { paddingBottom: 24, flexGrow: 1 },
   chatCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -215,6 +183,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   unreadText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 40,
+  },
+  emptyText: { fontSize: 14, fontWeight: "600" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
 });

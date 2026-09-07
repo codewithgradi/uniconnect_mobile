@@ -5,33 +5,45 @@ import {
   StyleSheet,
   TouchableOpacityProps,
   useColorScheme,
+  ActivityIndicator,
+  View,
 } from "react-native";
 
 interface ThemedButtonProps extends TouchableOpacityProps {
   title: string;
   style?: object;
   textStyle?: object;
+  loading?: boolean;
 }
 
 export const ThemedButtonPrimary: React.FC<ThemedButtonProps> = ({
   title,
   style,
   textStyle,
+  disabled,
+  loading,
   ...props
 }) => {
   const isDark = useColorScheme() === "dark";
+  const isInactive = disabled || loading;
 
   return (
     <TouchableOpacity
       activeOpacity={0.8}
+      disabled={isInactive}
       style={[
         styles.button,
         isDark ? styles.darkButton : styles.lightButton,
+        isInactive && styles.disabledButton,
         style,
       ]}
       {...props}
     >
-      <Text style={[styles.text, textStyle]}>{title}</Text>
+      {loading ? (
+        <ActivityIndicator color="#FFFFFF" />
+      ) : (
+        <Text style={[styles.text, textStyle]}>{title}</Text>
+      )}
     </TouchableOpacity>
   );
 };
@@ -46,10 +58,13 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   lightButton: {
-    backgroundColor: "#006837", // Richfield Green
+    backgroundColor: "#006837",
   },
   darkButton: {
-    backgroundColor: "#008748", // Brightened green contrast for dark mode
+    backgroundColor: "#008748",
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   text: {
     color: "#FFFFFF",
