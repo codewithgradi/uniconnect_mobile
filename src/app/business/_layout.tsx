@@ -8,20 +8,13 @@ export default function BusinessLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: isDark ? "#111827" : "#FFFFFF" },
-        headerTitleStyle: {
-          color: isDark ? "#FFFFFF" : "#111827",
-          fontWeight: "700",
-        },
-        headerTintColor: isDark ? "#008748" : "#006837",
-        headerShadowVisible: false,
+        headerShown: false, // Turn off default tab headers since sub-stacks handle their own headers
         tabBarActiveTintColor: isDark ? "#008748" : "#006837",
         tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#6B7280",
         tabBarStyle: {
           backgroundColor: isDark ? "#111827" : "#FFFFFF",
           borderTopColor: isDark ? "#374151" : "#E5E7EB",
-          height: 120,
+          height: 90,
           paddingBottom: 8,
           paddingTop: 8,
         },
@@ -38,14 +31,6 @@ export default function BusinessLayout() {
         }}
       />
       <Tabs.Screen
-        name="edit-profile"
-        options={{
-          title: "Edit Profile",
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
         name="applicants"
         options={{
           title: "Applicants",
@@ -55,7 +40,6 @@ export default function BusinessLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="messages"
         options={{
@@ -66,7 +50,6 @@ export default function BusinessLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="analytics"
         options={{
@@ -77,7 +60,6 @@ export default function BusinessLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="profile"
         options={{
@@ -89,19 +71,23 @@ export default function BusinessLayout() {
         }}
       />
 
-      {/* Hidden Routes */}
+      {/* Visible Opportunities Tab linking to the opportunities stack folder */}
       <Tabs.Screen
-        name="post-opportunity"
-        options={{ title: "Post Opportunity", href: null }}
+        name="opportunity"
+        options={{
+          title: "Opportunities",
+          tabBarLabel: "Opportunities",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="briefcase-outline" size={size} color={color} />
+          ),
+        }}
       />
-      <Tabs.Screen
-        name="applicant/[id]"
-        options={{ title: "Applicant Details", href: null }}
-      />
-      <Tabs.Screen
-        name="messages/[id]"
-        options={{ title: "Chat", href: null }}
-      />
+
+      {/* Hidden Routes (Excluded from bottom bar) */}
+      <Tabs.Screen name="edit-profile" options={{ href: null }} />
+      <Tabs.Screen name="post-opportunity" options={{ href: null }} />
+      <Tabs.Screen name="messages/[id]" options={{ href: null }} />
+      <Tabs.Screen name="applicant/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -267,9 +267,7 @@ export default function OpportunityVerificationDetailScreen() {
         <TouchableOpacity style={styles.rejectBtn} onPress={handleReject}>
           <Text style={styles.rejectBtnText}>Reject Request</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.approveBtn} onPress={handleApprove}>
-          <Text style={styles.approveBtnText}>Approve & Publish</Text>
-        </TouchableOpacity>
+       
       </View>
     </View>
   );

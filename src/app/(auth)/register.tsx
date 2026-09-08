@@ -57,10 +57,13 @@ export default function RegisterScreen() {
       return;
     }
 
+    const formattedUserType = (userType.charAt(0).toUpperCase() +
+      userType.slice(1).toLowerCase()) as UserType;
+
     const payload = {
       email: formData.email,
       password: formData.password,
-      userType,
+      userType: formattedUserType,
       firstName: isAcademicRole ? formData.firstName : undefined,
       lastName: isAcademicRole ? formData.lastName : undefined,
       programme: isAcademicRole ? formData.programme : undefined,
@@ -74,37 +77,64 @@ export default function RegisterScreen() {
       onSuccess: (data) => {
         console.log("✅ 3. Registration Successful Response:", data);
 
-        sendOtp(
-          { email: formData.email },
-          {
-            onSuccess: () => {
-              console.log("✅ 4. OTP Sent successfully. Navigating...");
-              router.push({
-                pathname: "/(auth)/verification",
-                params: { email: formData.email },
-              });
+        // Check if user type needs verification routing (Students & Alumni)
+        const requiresVerification =
+          userType === "student" || userType === "alumni";
+
+        if (requiresVerification) {
+          sendOtp(
+            { email: formData.email },
+            {
+              onSuccess: () => {
+                console.log("✅ 4. OTP Sent successfully. Navigating...");
+                router.push({
+                  pathname: "/(auth)/verification",
+                  params: { email: formData.email },
+                });
+              },
+              onError: (err: any) => {
+                console.error("❌ 4. OTP Dispatch Failed:", err);
+                showNotification(
+                  "Account Created",
+                  "Account created, but failed to send verification code. Proceeding to verification page.",
+                );
+                router.push({
+                  pathname: "/(auth)/verification",
+                  params: { email: formData.email },
+                });
+              },
             },
-            onError: (err: any) => {
-              console.error("❌ 4. OTP Dispatch Failed:", err);
-              showNotification(
-                "Account Created",
-                "Account created, but failed to send verification code. Proceeding to verification page.",
-              );
-              router.push({
-                pathname: "/(auth)/verification",
-                params: { email: formData.email },
-              });
-            },
-          },
-        );
+          );
+        } else {
+          // Non-student/alumni (e.g., Business) - Redirect and autofill login
+          showNotification(
+            "Registration Successful",
+            "Your business account has been created successfully.",
+          );
+          router.replace({
+            pathname: "/(auth)/createprofile",
+            params: { email: formData.email },
+          });
+        }
       },
       onError: (err: any) => {
         console.error("❌ 3. Registration Request Failed:", err);
-        const message =
-          err?.response?.data?.detail ||
-          err?.response?.data?.message ||
-          err?.message ||
-          "Registration failed. Check connection or inputs.";
+
+        let message = "Registration failed. Check connection or inputs.";
+        const errorData = err?.response?.data;
+
+        if (Array.isArray(errorData)) {
+          // Handle ASP.NET Identity array error structures (like DuplicateUserName)
+          message = errorData.map((e) => e.description).join("\n");
+        } else {
+          message =
+            errorData?.detail || errorData?.message || err?.message || message;
+        }
+
+        console.log(
+          "❌ 3. Detailed Server Error:",
+          JSON.stringify(errorData, null, 2),
+        );
         showNotification("Registration Failed", message);
       },
     });

@@ -49,6 +49,13 @@ export default function AuthLayout() {
           headerBackTitle: "Back",
         }}
       />
+      <Stack.Screen
+        name="createprofile"
+        options={{
+          // title: "",
+          headerBackTitle: "Back",
+        }}
+      />
     </Stack>
   );
 }

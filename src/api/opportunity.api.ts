@@ -41,8 +41,9 @@ export const opportunitiesApi = {
     businessProfileId: string,
   ): Promise<Opportunity[]> => {
     const response = await api.get(
-      `/opportunities/business/${businessProfileId}`,
+      `/opportunities/${businessProfileId}`,
     );
+    console.log("Fetching opportunity with ID:", businessProfileId);
     return response.data;
   },
 
@@ -53,6 +54,10 @@ export const opportunitiesApi = {
 
   getById: async (id: string): Promise<Opportunity> => {
     const response = await api.get(`/opportunities/${id}`);
+    return response.data;
+  },
+  getMyPostings: async (): Promise<Opportunity> => {
+    const response = await api.get(`/opportunities/my-postings`);
     return response.data;
   },
 

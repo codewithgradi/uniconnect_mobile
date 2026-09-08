@@ -48,12 +48,17 @@ export interface ProfileDto {
 }
 
 export interface CreateProfileDto {
-  firstName: string;
-  lastName: string;
-  studentNumber: string;
-  programme: string;
-  headline: string;
-  bio: string;
+  firstName?: string;
+  lastName?: string;
+  studentNumber?: string;
+  programme?: string;
+  headline?: string;
+  bio?: string;
+
+  companyName: string;
+  registrationNumber: string;
+  industry?: string;
+  websiteUrl?: string;
 }
 
 export interface UpdateProfileDto {

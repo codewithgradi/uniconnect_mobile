@@ -7,72 +7,41 @@ import {
   TextInput,
   TouchableOpacity,
   useColorScheme,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useSearchProfiles } from "@/api/hooks/useProfile";
 
 export default function UserManagementScreen() {
   const isDark = useColorScheme() === "dark";
-  const [activeTab, setActiveTab] = useState<
-    "Students" | "Alumni" | "Businesses"
-  >("Students");
+  const [activeTab, setActiveTab] = useState<"Students" | "Alumni">("Students");
   const [search, setSearch] = useState("");
 
-  const users = [
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      type: "Students",
-      role: "Student",
-      status: "Active",
-    },
-    {
-      id: "2",
-      name: "James Mwangi",
-      type: "Alumni",
-      role: "Alumni",
-      status: "Active",
-    },
-    {
-      id: "3",
-      name: "TechCorp Solutions",
-      type: "Businesses",
-      role: "Business",
-      status: "Pending",
-    },
-    {
-      id: "4",
-      name: "Lerato Dlamini",
-      type: "Alumni",
-      role: "Alumni",
-      status: "Active",
-    },
-    {
-      id: "5",
-      name: "Thabo Nkosi",
-      type: "Students",
-      role: "Student",
-      status: "Suspended",
-    },
-  ];
+  const {
+    data: profiles = [],
+    isLoading,
+    isError,
+  } = useSearchProfiles({
+    searchItem: search.trim() !== "" ? search : undefined,
+    targetProgramme: undefined,
+  });
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.type === activeTab &&
-      u.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Filter profiles based on the active tab, checking userType or falling back to user properties
+  const filteredProfiles = profiles.filter((profile: any) => {
+    // Check userType on the profile itself, or fallback to parent properties if structured differently
+    const userType = (
+      profile.userType ||
+      profile.user?.userType ||
+      profile.role ||
+      ""
+    ).toLowerCase();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return { bg: "#D1FAE5", text: "#065F46" };
-      case "Pending":
-        return { bg: "#FEF3C7", text: "#92400E" };
-      case "Suspended":
-        return { bg: "#FEE2E2", text: "#991B1B" };
-      default:
-        return { bg: "#E5E7EB", text: "#374151" };
+    if (activeTab === "Students") {
+      return userType.includes("student");
+    } else {
+      return userType.includes("alumni") || userType.includes(" alumnus");
     }
-  };
+  });
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -86,7 +55,7 @@ export default function UserManagementScreen() {
             styles.searchInput,
             isDark ? styles.darkText : styles.lightText,
           ]}
-          placeholder="Search users..."
+          placeholder="Search profiles..."
           placeholderTextColor="#9CA3AF"
           value={search}
           onChangeText={setSearch}
@@ -95,7 +64,7 @@ export default function UserManagementScreen() {
 
       {/* Role Filter Tabs */}
       <View style={styles.tabRow}>
-        {(["Students", "Alumni", "Businesses"] as const).map((tab) => (
+        {(["Students", "Alumni"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]}
@@ -106,7 +75,9 @@ export default function UserManagementScreen() {
                 styles.tabText,
                 activeTab === tab
                   ? styles.activeTabText
-                  : styles.inactiveTabText,
+                  : isDark
+                    ? styles.darkTabText
+                    : styles.inactiveTabText,
               ]}
             >
               {tab}
@@ -115,51 +86,94 @@ export default function UserManagementScreen() {
         ))}
       </View>
 
-      {/* User List */}
-      <FlatList
-        data={filteredUsers}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const badge = getStatusColor(item.status);
-          return (
-            <View
-              style={[
-                styles.userCard,
-                isDark ? styles.darkCard : styles.lightCard,
-              ]}
-            >
-              <View style={styles.userLeft}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+      {/* Profile List */}
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#006837" />
+          <Text
+            style={[
+              styles.loadingText,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+          >
+            Searching profiles...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProfiles}
+          keyExtractor={(item: any) => item.id}
+          renderItem={({ item }: { item: any }) => {
+            const fullName =
+              `${item.firstName || ""} ${item.lastName || ""}`.trim() ||
+              "Unknown User";
+            const initial = fullName.charAt(0).toUpperCase();
+
+            return (
+              <View
+                style={[
+                  styles.userCard,
+                  isDark ? styles.darkCard : styles.lightCard,
+                ]}
+              >
+                <View style={styles.userLeft}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{initial}</Text>
+                  </View>
+                  <View style={styles.userInfoArea}>
+                    <Text
+                      style={[
+                        styles.userName,
+                        isDark ? styles.darkText : styles.lightText,
+                      ]}
+                    >
+                      {fullName}
+                    </Text>
+                    <Text style={styles.userRole}>
+                      {item.headline ||
+                        item.userType ||
+                        item.user?.userType ||
+                        activeTab}
+                    </Text>
+                  </View>
                 </View>
-                <View>
-                  <Text
-                    style={[
-                      styles.userName,
-                      isDark ? styles.darkText : styles.lightText,
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
-                  <Text style={styles.userRole}>{item.role}</Text>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>Active</Text>
                 </View>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-                <Text style={[styles.statusText, { color: badge.text }]}>
-                  {item.status}
-                </Text>
-              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={48} color="#006837" />
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  isDark ? styles.darkText : styles.lightText,
+                ]}
+              >
+                No Profiles Found
+              </Text>
+              <Text style={styles.emptySub}>
+                No matching {activeTab.toLowerCase()} profiles were found.
+              </Text>
             </View>
-          );
-        }}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      />
+          }
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 40,
+  },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   searchBox: {
@@ -184,6 +198,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: "600" },
   activeTabText: { color: "#FFFFFF" },
   inactiveTabText: { color: "#374151" },
+  darkTabText: { color: "#D1D5DB" },
   userCard: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -193,7 +208,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  userLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  userLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  userInfoArea: { flex: 1 },
   avatar: {
     width: 38,
     height: 38,
@@ -204,9 +220,23 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
   userName: { fontSize: 14, fontWeight: "700" },
-  userRole: { fontSize: 12, color: "#6B7280" },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  statusText: { fontSize: 11, fontWeight: "700" },
+  userRole: { fontSize: 12, color: "#6B7280", marginTop: 1 },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: "#D1FAE5",
+  },
+  statusText: { fontSize: 11, fontWeight: "700", color: "#065F46" },
+  loadingText: { marginTop: 12, fontSize: 13, fontWeight: "600" },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 60,
+    gap: 8,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "700" },
+  emptySub: { fontSize: 12, color: "#9CA3AF", textAlign: "center" },
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },

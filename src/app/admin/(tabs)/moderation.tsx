@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,57 +6,44 @@ import {
   FlatList,
   TouchableOpacity,
   useColorScheme,
-  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-export interface PostDto {
-  Id: string;
-  AuthorId: string;
-  Content: string;
-  CreatedAt: string;
-  CommentCount: number;
-  LikeCount: number;
-}
-
-const MOCK_POSTS: PostDto[] = [
-  {
-    Id: "e2a1b3c4-1111-4a12-8b33-111111111111",
-    AuthorId: "u101",
-    Content:
-      "Hey everyone! Check out this new software developer internship opportunity posted on the board!",
-    CreatedAt: "2026-09-06T14:30:00Z",
-    CommentCount: 14,
-    LikeCount: 42,
-  },
-  {
-    Id: "f3b2c4d5-2222-4b23-9c44-222222222222",
-    AuthorId: "u102",
-    Content:
-      "Looking for a study partner for the upcoming advanced database systems assessment.",
-    CreatedAt: "2026-09-06T10:15:00Z",
-    CommentCount: 5,
-    LikeCount: 18,
-  },
-  {
-    Id: "a4c3d5e6-3333-4c34-0d55-333333333333",
-    AuthorId: "u103",
-    Content:
-      "Unverified promo link: Visit http://example-spam.com for free certification keys.",
-    CreatedAt: "2026-09-05T18:45:00Z",
-    CommentCount: 1,
-    LikeCount: 0,
-  },
-];
+import { usePosts } from "@/api/hooks/usePosts";
 
 export default function ModerationScreen() {
   const isDark = useColorScheme() === "dark";
-  const [posts, setPosts] = useState<PostDto[]>(MOCK_POSTS);
+  const {
+    posts,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePosts();
 
- 
-
- 
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centered,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text
+          style={[
+            styles.loadingText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Loading feed moderation queue...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -68,7 +55,7 @@ export default function ModerationScreen() {
             isDark ? styles.darkText : styles.lightText,
           ]}
         >
-          Feed Feed Moderation ({posts.length})
+          Feed Moderation ({posts.length})
         </Text>
         <Text style={styles.headerSub}>
           Monitor and moderate user posts published across the platform feed.
@@ -78,7 +65,7 @@ export default function ModerationScreen() {
       {/* Feed List */}
       <FlatList
         data={posts}
-        keyExtractor={(item) => item.Id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.8}
@@ -87,14 +74,9 @@ export default function ModerationScreen() {
             <View style={styles.cardHeader}>
               <View style={styles.authorBadge}>
                 <Ionicons name="person-outline" size={14} color="#006837" />
-                <Text style={styles.authorText}>Author: {item.AuthorId}</Text>
+                <Text style={styles.authorText}>Author: {item.author}</Text>
               </View>
-              <Text style={styles.dateText}>
-                {new Date(item.CreatedAt).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Text>
+              <Text style={styles.dateText}>{item.createdAt}</Text>
             </View>
 
             <Text
@@ -104,14 +86,14 @@ export default function ModerationScreen() {
               ]}
               numberOfLines={3}
             >
-              {item.Content}
+              {item.content}
             </Text>
 
             <View style={styles.footerRow}>
               <View style={styles.statsGroup}>
                 <View style={styles.statItem}>
                   <Ionicons name="heart-outline" size={14} color="#DC2626" />
-                  <Text style={styles.statText}>{item.LikeCount}</Text>
+                  <Text style={styles.statText}>{item.likes}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Ionicons
@@ -119,12 +101,33 @@ export default function ModerationScreen() {
                     size={14}
                     color="#0284C7"
                   />
-                  <Text style={styles.statText}>{item.CommentCount}</Text>
+                  <Text style={styles.statText}>{item.comments.length}</Text>
                 </View>
               </View>
             </View>
           </TouchableOpacity>
         )}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color="#006837" />
+              <Text
+                style={[
+                  styles.loadingMoreText,
+                  isDark ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Loading more posts...
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons
@@ -153,11 +156,13 @@ export default function ModerationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  centered: { justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   headerBox: { marginBottom: 16 },
   headerTitle: { fontSize: 18, fontWeight: "800" },
   headerSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  loadingText: { marginTop: 12, fontSize: 13, fontWeight: "600" },
   card: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   cardHeader: {
     flexDirection: "row",
@@ -188,16 +193,14 @@ const styles = StyleSheet.create({
   statsGroup: { flexDirection: "row", gap: 12 },
   statItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   statText: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
-  deleteBtn: {
-    flexDirection: "row",
+  footerLoader: {
+    paddingVertical: 16,
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FEE2E2",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
-  deleteBtnText: { color: "#DC2626", fontSize: 11, fontWeight: "700" },
+  loadingMoreText: { fontSize: 12, fontWeight: "600" },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",

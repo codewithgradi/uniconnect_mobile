@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,67 +6,56 @@ import {
   FlatList,
   TouchableOpacity,
   useColorScheme,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-export interface OpportunityVerificationDto {
-  id: string;
-  title: string;
-  companyName: string;
-  jobType: string;
-  location: string;
-  createdAt: string;
-}
-
-const MOCK_PENDING_OPPORTUNITIES: OpportunityVerificationDto[] = [
-  {
-    id: "1",
-    title: "Flutter Developer Intern",
-    companyName: "TechCorp Solutions",
-    jobType: "Internship",
-    location: "Cape Town, South Africa",
-    createdAt: "2 hours ago",
-  },
-  {
-    id: "2",
-    title: "Junior Frontend Developer",
-    companyName: "CreativeTech",
-    jobType: "Full-time",
-    location: "Johannesburg, South Africa",
-    createdAt: "5 hours ago",
-  },
-  {
-    id: "3",
-    title: "Data Science Intern",
-    companyName: "DataNova",
-    jobType: "Internship",
-    location: "Pretoria, South Africa",
-    createdAt: "1 day ago",
-  },
-];
+import {
+  useRejectOpportunity,
+  usePendingOpportunities,
+  useApproveOpportunity,
+} from "@/api/hooks/useOpportunity";
 
 export default function VerificationsScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
-  const [pendingItems, setPendingItems] = useState<
-    OpportunityVerificationDto[]
-  >(MOCK_PENDING_OPPORTUNITIES);
 
-  const handleApprove = (id: string) => {
-    setPendingItems((prev) => prev.filter((item) => item.id !== id));
+  const {
+    data: pendingOpportunities = [],
+    isLoading,
+    isError,
+  } = usePendingOpportunities();
+  const approveOpportunity = useApproveOpportunity();
+  const rejectOpportunity = useRejectOpportunity();
+
+  const handleCardPress = (id: string) => {
+    router.push({
+      pathname: "/admin/verifications/[id]",
+      params: { id },
+    });
   };
 
-  const handleReject = (id: string) => {
-    setPendingItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
- const handleCardPress = (id: string) => {
-   router.push({
-     pathname: "/admin/verifications/[id]",
-     params: { id },
-   });
- };
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centered,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text
+          style={[
+            styles.loadingText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Loading verification queue...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -78,7 +67,7 @@ export default function VerificationsScreen() {
             isDark ? styles.darkText : styles.lightText,
           ]}
         >
-          Pending Opportunities ({pendingItems.length})
+          Pending Opportunities ({pendingOpportunities.length})
         </Text>
         <Text style={styles.headerSub}>
           Review and verify business job postings before publishing.
@@ -87,7 +76,7 @@ export default function VerificationsScreen() {
 
       {/* Verification Queue List */}
       <FlatList
-        data={pendingItems}
+        data={pendingOpportunities}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -108,42 +97,48 @@ export default function VerificationsScreen() {
                 >
                   {item.title}
                 </Text>
-                <Text style={styles.companyName}>{item.companyName}</Text>
+                <Text style={styles.companyName}>{item.status}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </View>
 
             <View style={styles.detailsRow}>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{item.jobType}</Text>
+                <Text style={styles.badgeText}>{item.targetProgramme}</Text>
               </View>
               <View style={styles.metaInfo}>
                 <Ionicons name="location-outline" size={12} color="#6B7280" />
-                <Text style={styles.metaText}>{item.location}</Text>
+                <Text style={styles.metaText}>{item.description}</Text>
               </View>
             </View>
 
             <View style={styles.footerRow}>
-              <Text style={styles.timeText}>Submitted {item.createdAt}</Text>
+              <Text style={styles.timeText}>Submitted {item.createdAtUtc}</Text>
               <View style={styles.actionGroup}>
                 <TouchableOpacity
                   style={styles.rejectBtn}
                   onPress={(e) => {
                     e.stopPropagation();
-                    handleReject(item.id);
+                    rejectOpportunity.mutate(item.id);
                   }}
+                  disabled={rejectOpportunity.isPending}
                 >
-                  <Text style={styles.rejectBtnText}>Reject</Text>
+                  <Text style={styles.rejectBtnText}>
+                    {rejectOpportunity.isPending ? "Rejecting..." : "Reject"}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.approveBtn}
                   onPress={(e) => {
                     e.stopPropagation();
-                    handleApprove(item.id);
+                    approveOpportunity.mutate(item.id);
                   }}
+                  disabled={approveOpportunity.isPending}
                 >
-                  <Text style={styles.approveBtnText}>Approve</Text>
+                  <Text style={styles.approveBtnText}>
+                    {approveOpportunity.isPending ? "Approving..." : "Approve"}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -177,11 +172,13 @@ export default function VerificationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  centered: { justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   headerBox: { marginBottom: 16 },
   headerTitle: { fontSize: 18, fontWeight: "800" },
   headerSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  loadingText: { marginTop: 12, fontSize: 13, fontWeight: "600" },
   card: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   companyIcon: {

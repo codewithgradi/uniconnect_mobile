@@ -8,16 +8,16 @@ import {
   useColorScheme,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Href, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useMyProfile } from "@/api/hooks/useProfile"; // Adjust path if needed
+import { useMyBusinessProfile } from "@/api/hooks/useBusiness"; // Updated to business hook
 
 export default function BusinessDashboardScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
-  // Fetching business/user profile data using useMyProfile hook
-  const { data: profile, isLoading, error } = useMyProfile();
+  // Fetching business profile data using the business hook instead of student profile
+  const { data: profile, isLoading, error } = useMyBusinessProfile();
 
   if (isLoading) {
     return (
@@ -32,8 +32,7 @@ export default function BusinessDashboardScreen() {
     );
   }
 
-  const companyName =
-    profile?.firstName || profile?.headline || "Your Business";
+  const companyName = profile?.companyName || "Your Business";
 
   return (
     <ScrollView
@@ -131,7 +130,7 @@ export default function BusinessDashboardScreen() {
 
         <TouchableOpacity
           style={styles.actionRow}
-          onPress={() => router.push("/business/applicants")}
+          onPress={() => router.push("/business/opportunity" as Href)}
         >
           <View style={styles.rowLeft}>
             <View style={styles.actionIconContainer}>
@@ -144,7 +143,7 @@ export default function BusinessDashboardScreen() {
                   isDark ? styles.darkText : styles.lightText,
                 ]}
               >
-                View Applicants
+                View Active Opportunities
               </Text>
               <Text style={styles.rowSubText}>
                 Review and shortlist candidates

@@ -24,6 +24,12 @@ export const usePendingOpportunities = () => {
     queryFn: () => opportunitiesApi.getPending(),
   });
 };
+export const useGetMyPostings = () => {
+  return useQuery({
+    queryKey: opportunityKeys.my(),
+    queryFn: () => opportunitiesApi.getMyPostings(),
+  });
+};
 
 export const useCreateOpportunity = () => {
   const queryClient = useQueryClient();

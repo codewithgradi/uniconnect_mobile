@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 
-export type UserRole = "Student" | "Alumni" | "Admin" | "Business";
+export type UserRole = "Student" | "Alumni" | "Business";
 
 // Changed to default export
 export default function RoleSelectionScreen() {
@@ -17,7 +17,7 @@ export default function RoleSelectionScreen() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole>("Student");
 
-  const roles: UserRole[] = ["Student", "Alumni", "Business", "Admin"];
+  const roles: UserRole[] = ["Student", "Alumni", "Business"];
 
   const handleNext = () => {
     router.push({
