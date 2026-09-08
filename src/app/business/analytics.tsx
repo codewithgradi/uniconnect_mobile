@@ -6,81 +6,92 @@ import {
   ScrollView,
   useColorScheme,
   Dimensions,
+  ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Rect, Text as SvgText, Line } from "react-native-svg";
+import {
+  useBusinessAnalytics,
+  BusinessAnalyticsDto,
+  JobListingPerformanceDto,
+} from "@/api/hooks/useUserAnalytics"; // Update path if needed
 
-export interface JobListingPerformanceDto {
-  OpportunityId: string;
-  Title: string;
-  ApplicantCount: number;
-  PostedAtUtc: string;
-  Status: "Active" | "Closed" | "Draft" | string;
+interface BusinessAnalyticsScreenProps {
+  userId: string; // Pass the current user's ID to fetch specific analytics
 }
 
-export interface BusinessAnalyticsDto {
-  BusinessId: string;
-  ActiveJobListings: number;
-  TotalJobPostings: number;
-  TotalApplicantsReceived: number;
-  PendingApplicantReviews: number;
-  ShortlistedCandidatesCount: number;
-  ProfileViewsCount: number;
-  TopListings: JobListingPerformanceDto[];
-}
-
-const MOCK_BUSINESS_ANALYTICS: BusinessAnalyticsDto = {
-  BusinessId: "e8a719d3-3891-4e42-b054-61b6c0e81f18",
-  ActiveJobListings: 8,
-  TotalJobPostings: 14,
-  TotalApplicantsReceived: 184,
-  PendingApplicantReviews: 32,
-  ShortlistedCandidatesCount: 19,
-  ProfileViewsCount: 640,
-  TopListings: [
-    {
-      OpportunityId: "b101",
-      Title: "Flutter Intern",
-      ApplicantCount: 68,
-      PostedAtUtc: new Date(Date.now() - 86400000 * 12).toISOString(),
-      Status: "Active",
-    },
-    {
-      OpportunityId: "b102",
-      Title: ".NET Backend Dev",
-      ApplicantCount: 52,
-      PostedAtUtc: new Date(Date.now() - 86400000 * 20).toISOString(),
-      Status: "Active",
-    },
-    {
-      OpportunityId: "b103",
-      Title: "UI/UX Designer",
-      ApplicantCount: 41,
-      PostedAtUtc: new Date(Date.now() - 86400000 * 30).toISOString(),
-      Status: "Active",
-    },
-    {
-      OpportunityId: "b104",
-      Title: "Data Analyst",
-      ApplicantCount: 23,
-      PostedAtUtc: new Date(Date.now() - 86400000 * 45).toISOString(),
-      Status: "Closed",
-    },
-  ],
-};
-
-export default function BusinessAnalyticsScreen() {
+export default function BusinessAnalyticsScreen({
+  userId,
+}: BusinessAnalyticsScreenProps) {
   const isDark = useColorScheme() === "dark";
-  const data = MOCK_BUSINESS_ANALYTICS;
   const screenWidth = Dimensions.get("window").width - 72;
+
+  const {
+    data: apiData,
+    isLoading,
+    error,
+    refetch,
+  } = useBusinessAnalytics(userId);
+
+  // Directly assign apiData to data since it already matches BusinessAnalyticsDto
+  const data: BusinessAnalyticsDto | null = apiData ?? null;
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text
+          style={[
+            styles.loadingText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Loading business analytics...
+        </Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <Ionicons name="alert-circle-outline" size={48} color="#DC2626" />
+        <Text
+          style={[
+            styles.errorTitle,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Could not load analytics
+        </Text>
+        <Text style={styles.errorSubText}>
+          {error ? error.message : "No analytics data available."}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // Graph 1: Applicant Funnel Metrics
   const funnelData = [
-    { label: "Total", count: data.TotalApplicantsReceived, color: "#0284C7" },
-    { label: "Pending", count: data.PendingApplicantReviews, color: "#D97706" },
+    { label: "Total", count: data.totalApplicantsReceived, color: "#0284C7" },
+    { label: "Pending", count: data.pendingApplicantReviews, color: "#D97706" },
     {
       label: "Shortlisted",
-      count: data.ShortlistedCandidatesCount,
+      count: data.shortlistedCandidatesCount,
       color: "#006837",
     },
   ];
@@ -88,7 +99,7 @@ export default function BusinessAnalyticsScreen() {
 
   // Graph 2: Top Listings Applicants Comparison
   const maxListingsCount = Math.max(
-    ...data.TopListings.map((l) => l.ApplicantCount),
+    ...data.topListings.map((l) => l.applicantCount),
     1,
   );
 
@@ -112,7 +123,7 @@ export default function BusinessAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.ActiveJobListings}
+            {data.activeJobListings}
           </Text>
           <Text style={styles.statLabel}>Active Listings</Text>
         </View>
@@ -129,7 +140,7 @@ export default function BusinessAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.TotalApplicantsReceived}
+            {data.totalApplicantsReceived}
           </Text>
           <Text style={styles.statLabel}>Total Applicants</Text>
         </View>
@@ -146,7 +157,7 @@ export default function BusinessAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.PendingApplicantReviews}
+            {data.pendingApplicantReviews}
           </Text>
           <Text style={styles.statLabel}>Pending Review</Text>
         </View>
@@ -163,7 +174,7 @@ export default function BusinessAnalyticsScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {data.ProfileViewsCount}
+            {data.profileViewsCount}
           </Text>
           <Text style={styles.statLabel}>Profile Views</Text>
         </View>
@@ -244,14 +255,17 @@ export default function BusinessAnalyticsScreen() {
         >
           Applicants per Top Listing
         </Text>
-        <Svg height={data.TopListings.length * 36 + 10} width={screenWidth}>
-          {data.TopListings.map((listing, index) => {
+        <Svg
+          height={Math.max(data.topListings.length * 36 + 10, 40)}
+          width={screenWidth}
+        >
+          {data.topListings.map((listing, index) => {
             const barWidth =
-              (listing.ApplicantCount / maxListingsCount) * (screenWidth - 120);
+              (listing.applicantCount / maxListingsCount) * (screenWidth - 120);
             const y = index * 36;
 
             return (
-              <React.Fragment key={listing.OpportunityId}>
+              <React.Fragment key={listing.opportunityId}>
                 <SvgText
                   x={0}
                   y={y + 16}
@@ -259,9 +273,9 @@ export default function BusinessAnalyticsScreen() {
                   fontSize="11"
                   fontWeight="600"
                 >
-                  {listing.Title.length > 14
-                    ? `${listing.Title.substring(0, 12)}...`
-                    : listing.Title}
+                  {listing.title.length > 14
+                    ? `${listing.title.substring(0, 12)}...`
+                    : listing.title}
                 </SvgText>
                 <Rect
                   x={100}
@@ -278,7 +292,7 @@ export default function BusinessAnalyticsScreen() {
                   fontSize="10"
                   fontWeight="bold"
                 >
-                  {listing.ApplicantCount}
+                  {listing.applicantCount}
                 </SvgText>
               </React.Fragment>
             );
@@ -289,9 +303,9 @@ export default function BusinessAnalyticsScreen() {
       {/* Top Listings Summary Table */}
       <Text style={styles.sectionTitle}>Top Opportunity Listings</Text>
       <View style={styles.listContainer}>
-        {data.TopListings.map((listing) => (
+        {data.topListings.map((listing) => (
           <View
-            key={listing.OpportunityId}
+            key={listing.opportunityId}
             style={[
               styles.listingCard,
               isDark ? styles.darkCard : styles.lightCard,
@@ -304,10 +318,10 @@ export default function BusinessAnalyticsScreen() {
                   isDark ? styles.darkText : styles.lightText,
                 ]}
               >
-                {listing.Title}
+                {listing.title}
               </Text>
               <Text style={styles.listingSub}>
-                {listing.ApplicantCount} total applicants
+                {listing.applicantCount} total applicants
               </Text>
             </View>
             <View
@@ -315,7 +329,7 @@ export default function BusinessAnalyticsScreen() {
                 styles.statusBadge,
                 {
                   backgroundColor:
-                    listing.Status === "Active" ? "#D1FAE5" : "#E5E7EB",
+                    listing.status === "Active" ? "#D1FAE5" : "#E5E7EB",
                 },
               ]}
             >
@@ -323,11 +337,11 @@ export default function BusinessAnalyticsScreen() {
                 style={[
                   styles.statusText,
                   {
-                    color: listing.Status === "Active" ? "#065F46" : "#374151",
+                    color: listing.status === "Active" ? "#065F46" : "#374151",
                   },
                 ]}
               >
-                {listing.Status}
+                {listing.status}
               </Text>
             </View>
           </View>
@@ -339,6 +353,12 @@ export default function BusinessAnalyticsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   sectionTitle: {
@@ -381,4 +401,25 @@ const styles = StyleSheet.create({
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
+  loadingText: { marginTop: 12, fontSize: 14 },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#006837",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: { color: "#FFFFFF", fontWeight: "600" },
 });

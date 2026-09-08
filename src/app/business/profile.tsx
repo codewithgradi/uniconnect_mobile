@@ -7,33 +7,71 @@ import {
   TouchableOpacity,
   useColorScheme,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-
-export interface BusinessProfileDto {
-  Id: string;
-  CompanyName: string;
-  Industry: string;
-  WebsiteUrl: string;
-}
-
-const MOCK_PROFILE: BusinessProfileDto = {
-  Id: "e8a719d3-3891-4e42-b054-61b6c0e81f18",
-  CompanyName: "TechCorp Solutions",
-  Industry: "Information Technology & Software",
-  WebsiteUrl: "https://techcorp.example.com",
-};
+import { useMyBusinessProfile } from "@/api/hooks/useBusiness"; // Update path to where you saved your TanStack query file
 
 export default function BusinessProfileScreen() {
   const isDark = useColorScheme() === "dark";
-  const profile = MOCK_PROFILE;
+  const { data: profile, isLoading, error, refetch } = useMyBusinessProfile();
 
   const handleOpenWebsite = () => {
-    if (profile.WebsiteUrl) {
-      Linking.openURL(profile.WebsiteUrl);
+    if (profile?.websiteUrl) {
+      Linking.openURL(profile.websiteUrl);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text
+          style={[
+            styles.loadingText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Loading profile...
+        </Text>
+      </View>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <Ionicons name="alert-circle-outline" size={48} color="#DC2626" />
+        <Text
+          style={[
+            styles.errorTitle,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Could not load business profile
+        </Text>
+        <Text style={styles.errorSubText}>
+          {error
+            ? error.message
+            : "No business profile found for this account."}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -51,9 +89,9 @@ export default function BusinessProfileScreen() {
             isDark ? styles.darkText : styles.lightText,
           ]}
         >
-          {profile.CompanyName}
+          {profile.companyName}
         </Text>
-        <Text style={styles.industryText}>{profile.Industry}</Text>
+        <Text style={styles.industryText}>{profile.industry}</Text>
       </View>
 
       {/* Account Info Details */}
@@ -72,7 +110,7 @@ export default function BusinessProfileScreen() {
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            {profile.Industry}
+            {profile.industry}
           </Text>
         </View>
 
@@ -84,7 +122,12 @@ export default function BusinessProfileScreen() {
             <Text style={styles.infoLabel}>Website</Text>
           </View>
           <Text style={styles.linkText}>
-            {profile.WebsiteUrl.replace("https://", "")}
+            {profile.websiteUrl
+              ? profile.websiteUrl.replace("https://", "").replace(
+                  "http://",
+                  "",
+                )
+              : "N/A"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -123,6 +166,12 @@ export default function BusinessProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   header: { alignItems: "center", marginVertical: 24 },
@@ -173,4 +222,25 @@ const styles = StyleSheet.create({
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
+  loadingText: { marginTop: 12, fontSize: 14 },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#006837",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: { color: "#FFFFFF", fontWeight: "600" },
 });

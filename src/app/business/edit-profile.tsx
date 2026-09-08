@@ -13,66 +13,53 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-export interface BusinessProfileDto {
-  Id: string;
-  CompanyName: string;
-  Industry: string;
-  WebsiteUrl: string;
-  Description?: string;
-  Location?: string;
-}
-
-const INITIAL_PROFILE: BusinessProfileDto = {
-  Id: "e8a719d3-3891-4e42-b054-61b6c0e81f18",
-  CompanyName: "TechCorp Solutions",
-  Industry: "Information Technology & Software",
-  WebsiteUrl: "https://techcorp.example.com",
-  Description:
-    "Building innovative enterprise software solutions and connecting talent across tech ecosystems.",
-  Location: "Johannesburg, South Africa",
-};
+import { useCreateBusinessProfile } from "@/api/hooks/useBusiness"; // Update path to where your hooks are located
 
 export default function EditCompanyProfileScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
-  const [companyName, setCompanyName] = useState(INITIAL_PROFILE.CompanyName);
-  const [industry, setIndustry] = useState(INITIAL_PROFILE.Industry);
-  const [websiteUrl, setWebsiteUrl] = useState(INITIAL_PROFILE.WebsiteUrl);
-  const [description, setDescription] = useState(
-    INITIAL_PROFILE.Description || "",
-  );
-  const [location, setLocation] = useState(INITIAL_PROFILE.Location || "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Form states matching CreateBusinessDto
+  const [companyName, setCompanyName] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+
+  const { mutate: createProfile, isPending: isSubmitting } =
+    useCreateBusinessProfile();
 
   const handleSave = () => {
-    if (!companyName.trim() || !industry.trim()) {
+    if (!companyName.trim() || !industry.trim() || !registrationNumber.trim()) {
       Alert.alert(
         "Validation Error",
-        "Company Name and Industry are required.",
+        "Company Name, Registration Number, and Industry are required.",
       );
       return;
     }
 
-    setIsSubmitting(true);
-
-    const updatedProfile: BusinessProfileDto = {
-      Id: INITIAL_PROFILE.Id,
-      CompanyName: companyName.trim(),
-      Industry: industry.trim(),
-      WebsiteUrl: websiteUrl.trim(),
-      Description: description.trim(),
-      Location: location.trim(),
-    };
-
-    // Simulate API request delay
-    setTimeout(() => {
-      setIsSubmitting(false);
-      Alert.alert("Profile Updated", "Company details updated successfully.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
-    }, 600);
+    createProfile(
+      {
+        companyName: companyName.trim(),
+        registrationNumber: registrationNumber.trim(),
+        industry: industry.trim(),
+        websiteUrl: websiteUrl.trim(),
+      },
+      {
+        onSuccess: () => {
+          Alert.alert(
+            "Profile Created",
+            "Company details saved successfully.",
+            [{ text: "OK", onPress: () => router.back() }],
+          );
+        },
+        onError: (error) => {
+          Alert.alert(
+            "Error",
+            error.message || "Failed to create business profile.",
+          );
+        },
+      },
+    );
   };
 
   return (
@@ -108,6 +95,22 @@ export default function EditCompanyProfileScreen() {
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={styles.label}>Registration Number *</Text>
+          <TextInput
+            style={[
+              styles.input,
+              isDark ? styles.darkInput : styles.lightInput,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+            value={registrationNumber}
+            onChangeText={setRegistrationNumber}
+            placeholder="e.g. 2023/123456/07"
+            placeholderTextColor="#9CA3AF"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.formGroup}>
           <Text style={styles.label}>Industry *</Text>
           <TextInput
             style={[
@@ -136,39 +139,6 @@ export default function EditCompanyProfileScreen() {
             placeholderTextColor="#9CA3AF"
             keyboardType="url"
             autoCapitalize="none"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Location</Text>
-          <TextInput
-            style={[
-              styles.input,
-              isDark ? styles.darkInput : styles.lightInput,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="e.g. Durban, South Africa"
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>About Company</Text>
-          <TextInput
-            style={[
-              styles.textArea,
-              isDark ? styles.darkInput : styles.lightInput,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Brief overview of your company..."
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
           />
         </View>
 
@@ -213,8 +183,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  changeBadgeBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  changeBadgeText: { fontSize: 13, color: "#006837", fontWeight: "600" },
   formGroup: { marginBottom: 16 },
   label: {
     fontSize: 13,
@@ -228,14 +196,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 14,
-    fontSize: 14,
-  },
-  textArea: {
-    height: 100,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingTop: 12,
     fontSize: 14,
   },
   lightInput: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },

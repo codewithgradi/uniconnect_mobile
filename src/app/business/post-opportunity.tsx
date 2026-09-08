@@ -6,11 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   useColorScheme,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ThemedInput } from "../../components/ThemedInput";
+import { useCreateOpportunity } from "@/api/hooks/useOpportunity"; // Update path if needed
 
-export default function PostOpportunityScreen() {
+interface PostOpportunityScreenProps {
+  businessId: string;
+}
+
+export default function PostOpportunityScreen({
+  businessId,
+}: PostOpportunityScreenProps) {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
@@ -24,9 +33,32 @@ export default function PostOpportunityScreen() {
     "• Basic knowledge of Flutter\n• Dart programming\n• Strong problem solving skills",
   );
 
+  const { mutate: createOpportunity, isPending } = useCreateOpportunity();
+
   const handlePublish = () => {
-    // Submit job logic
-    router.back();
+    if (!jobTitle || !jobType || !location || !description) {
+      Alert.alert("Error", "Please fill in all required fields.");
+      return;
+    }
+
+    createOpportunity(
+      {
+        businessProfileId: businessId,
+      } as any,
+      {
+        onSuccess: () => {
+          Alert.alert("Success", "Opportunity published successfully!");
+          router.back();
+        },
+        onError: (error: any) => {
+          Alert.alert(
+            "Error",
+            error?.message ||
+              "Failed to publish opportunity. Please try again.",
+          );
+        },
+      },
+    );
   };
 
   return (
@@ -73,8 +105,16 @@ export default function PostOpportunityScreen() {
         style={styles.textArea}
       />
 
-      <TouchableOpacity style={styles.publishBtn} onPress={handlePublish}>
-        <Text style={styles.publishBtnText}>Publish</Text>
+      <TouchableOpacity
+        style={[styles.publishBtn, isPending && styles.disabledBtn]}
+        onPress={handlePublish}
+        disabled={isPending}
+      >
+        {isPending ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.publishBtnText}>Publish</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -99,6 +139,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 24,
     marginBottom: 40,
+  },
+  disabledBtn: {
+    opacity: 0.7,
   },
   publishBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
 });
