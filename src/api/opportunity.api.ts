@@ -62,7 +62,12 @@ export const opportunitiesApi = {
   },
 
   create: async (dto: CreateOpportunityDto): Promise<void> => {
-    await api.post("/opportunities", dto);
+    try {
+      await api.post("/opportunities", dto);
+    } catch (err: any) {
+      console.log("Backend validation error details:", err?.response?.data);
+      throw err;
+    }
   },
 
   apply: async ({

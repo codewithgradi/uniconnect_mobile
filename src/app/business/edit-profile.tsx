@@ -1,32 +1,32 @@
+import { useUpdateBusinessProfile } from "@/api/hooks/useBusiness"; // Update path to where your hooks are located
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   useColorScheme,
-  Alert,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useCreateBusinessProfile } from "@/api/hooks/useBusiness"; // Update path to where your hooks are located
 
 export default function EditCompanyProfileScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
-  // Form states matching CreateBusinessDto
+  // Form states matching BusinessProfileUpdateDto
   const [companyName, setCompanyName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [industry, setIndustry] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
 
-  const { mutate: createProfile, isPending: isSubmitting } =
-    useCreateBusinessProfile();
+  const { mutate: updateProfile, isPending: isSubmitting } =
+    useUpdateBusinessProfile();
 
   const handleSave = () => {
     if (!companyName.trim() || !industry.trim() || !registrationNumber.trim()) {
@@ -37,7 +37,7 @@ export default function EditCompanyProfileScreen() {
       return;
     }
 
-    createProfile(
+    updateProfile(
       {
         companyName: companyName.trim(),
         registrationNumber: registrationNumber.trim(),
@@ -47,16 +47,17 @@ export default function EditCompanyProfileScreen() {
       {
         onSuccess: () => {
           Alert.alert(
-            "Profile Created",
+            "Profile Updated",
             "Company details saved successfully.",
             [{ text: "OK", onPress: () => router.back() }],
           );
         },
-        onError: (error) => {
-          Alert.alert(
-            "Error",
-            error.message || "Failed to create business profile.",
-          );
+        onError: (error: any) => {
+          const message =
+            error?.response?.data ||
+            error.message ||
+            "Failed to update business profile.";
+          Alert.alert("Error", message);
         },
       },
     );

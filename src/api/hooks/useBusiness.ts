@@ -17,6 +17,15 @@ export interface CreateBusinessDto {
   websiteUrl: string;
 }
 
+
+export interface BusinessProfileUpdateDto {
+  registrationNumber: string;
+  companyName: string;
+  industry: string;
+  websiteUrl: string;
+}
+
+
 // --- Query Keys ---
 
 export const businessKeys = {
@@ -52,7 +61,12 @@ async function createBusinessProfile(dto: CreateBusinessDto): Promise<void> {
     throw new Error(errorText || "Failed to create business profile.");
   }
 }
-
+export const updateBusinessProfile = async (
+  dto: BusinessProfileUpdateDto,
+): Promise<string> => {
+  const response = await api.put<string>("/business", dto);
+  return response.data;
+};
 // --- TanStack Query Hooks (v5) ---
 
 export function useMyBusinessProfile() {
@@ -76,3 +90,15 @@ export function useCreateBusinessProfile() {
     },
   });
 }
+
+
+export const useUpdateBusinessProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: BusinessProfileUpdateDto) => updateBusinessProfile(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: businessKeys.me() });
+    },
+  });
+};

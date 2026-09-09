@@ -1,3 +1,4 @@
+import { BASE_URL } from "@/api/client";
 import { useLogin } from "@/api/hooks/useAuth";
 import { ThemedButtonPrimary } from "@/components/ThemedButton";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -25,15 +26,19 @@ export default function LoginScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
+  // Logs immediately when the component mounts so you can verify the URL in your terminal
+
   // Params are optional (only populated if redirected right after registration)
   const params = useLocalSearchParams<{
     email?: string;
+    password?:string;
     userType?: string;
     role?: string;
   }>();
 
   const [email, setEmail] = useState(params.email || "");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(params.password||"");
+  const [showPassword, setShowPassword] = useState(false);
 
   const { mutate: login, isPending, error } = useLogin();
 
@@ -63,18 +68,17 @@ export default function LoginScreen() {
   };
 
   const handleLogin = () => {
+
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail || !password) {
       Alert.alert("Validation Error", "Please enter both email and password.");
       return;
     }
-
     login(
       { email: cleanEmail, password },
       {
         onSuccess: (data: any) => {
-          // 1. Locate the access token string in the response
           const token =
             data?.accessToken ||
             data?.token ||
@@ -83,7 +87,6 @@ export default function LoginScreen() {
 
           let extractedRole: string | undefined = undefined;
 
-          // 2. Decode the JWT to read user_type added by CustomClaimsPrincipalFactory
           if (
             token &&
             typeof token === "string" &&
@@ -102,7 +105,6 @@ export default function LoginScreen() {
             }
           }
 
-          // 3. Fallbacks if role wasn't in JWT (direct response props or route params)
           if (!extractedRole) {
             extractedRole =
               data?.userType ||
@@ -149,14 +151,27 @@ export default function LoginScreen() {
           autoComplete="email"
           textContentType="emailAddress"
         />
-        <ThemedInput
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-          textContentType="password"
-        />
+
+        <View style={styles.passwordWrapper}>
+          <View style={styles.passwordInputContainer}>
+            <ThemedInput
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete="password"
+              textContentType="password"
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.eyeToggleBtn}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Text style={styles.eyeToggleText}>
+              {showPassword ? "Hide" : "Show"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {error && (
           <Text style={styles.errorText}>
@@ -165,10 +180,6 @@ export default function LoginScreen() {
               "Invalid login credentials."}
           </Text>
         )}
-
-        <TouchableOpacity style={styles.forgotBtn}>
-          <Text style={styles.forgotText}>Forgot Password?</Text>
-        </TouchableOpacity>
 
         <ThemedButtonPrimary
           title={isPending ? "Signing In..." : "Sign In"}
@@ -205,8 +216,25 @@ const styles = StyleSheet.create({
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
   form: { flex: 1, justifyContent: "center" },
-  forgotBtn: { alignSelf: "flex-end", marginTop: 8 },
-  forgotText: { color: "#006837", fontSize: 14, fontWeight: "500" },
+  passwordWrapper: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  passwordInputContainer: {
+    width: "100%",
+  },
+  eyeToggleBtn: {
+    position: "absolute",
+    right: 16,
+    top: 16,
+    zIndex: 10,
+    padding: 4,
+  },
+  eyeToggleText: {
+    color: "#006837",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   footerLink: { alignItems: "center" },
   footerText: { color: "#6B7280", fontSize: 14 },
   linkText: { color: "#006837", fontWeight: "600" },

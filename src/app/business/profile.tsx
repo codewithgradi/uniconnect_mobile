@@ -1,17 +1,19 @@
+import { useMyBusinessProfile } from "@/api/hooks/useBusiness"; // Update path to where you saved your TanStack query file
+import Ionicons from "@expo/vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import React from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Linking,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
   useColorScheme,
-  Linking,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
-import { useMyBusinessProfile } from "@/api/hooks/useBusiness"; // Update path to where you saved your TanStack query file
 
 export default function BusinessProfileScreen() {
   const isDark = useColorScheme() === "dark";
@@ -21,6 +23,27 @@ export default function BusinessProfileScreen() {
     if (profile?.websiteUrl) {
       Linking.openURL(profile.websiteUrl);
     }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            // Clear your auth tokens/storage keys here (e.g., JWT token, user session)
+            await AsyncStorage.removeItem("token"); // Adjust key name to match what you use for your auth token
+
+            // Navigate back to the home/welcome/login screen
+            router.replace("/"); // Or router.replace("/auth/login") depending on your expo-router structure
+          } catch (error) {
+            Alert.alert("Error", "Failed to log out properly.");
+          }
+        },
+      },
+    ]);
   };
 
   if (isLoading) {
@@ -123,10 +146,9 @@ export default function BusinessProfileScreen() {
           </View>
           <Text style={styles.linkText}>
             {profile.websiteUrl
-              ? profile.websiteUrl.replace("https://", "").replace(
-                  "http://",
-                  "",
-                )
+              ? profile.websiteUrl
+                  .replace("https://", "")
+                  .replace("http://", "")
               : "N/A"}
           </Text>
         </TouchableOpacity>
@@ -154,7 +176,7 @@ export default function BusinessProfileScreen() {
 
         <View style={styles.divider} />
 
-        <TouchableOpacity style={styles.actionRow}>
+        <TouchableOpacity style={styles.actionRow} onPress={handleLogout}>
           <Text style={{ color: "#DC2626", fontSize: 15, fontWeight: "600" }}>
             Log Out
           </Text>

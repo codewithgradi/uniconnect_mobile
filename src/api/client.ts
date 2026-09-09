@@ -5,12 +5,9 @@ import {
   saveTokens,
   clearTokens,
 } from "./storage";
-
-export const BASE_URL =
-  process.env.EXPO_ENVIRONMENT === "development"
-    ? process.env.EXPO_PUBLIC_API_URL_DEV
-    : process.env.EXPO_PUBLIC_API_URL;
-
+export const BASE_URL = __DEV__
+  ? process.env.EXPO_PUBLIC_API_URL_DEV
+  : process.env.EXPO_PUBLIC_API_URL;
 export const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },

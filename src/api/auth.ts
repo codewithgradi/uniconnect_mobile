@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiClient } from "./client";
+import { apiClient, BASE_URL } from "./client";
 
 export type UserType = "student" | "alumni" | "business" | "admin";
 
@@ -43,6 +43,7 @@ export const loginApi = async (
     "auth/login",
     credentials,
   );
+  console.log(BASE_URL);
 
   // Save token to AsyncStorage using the matching key "accessToken"
   if (data.accessToken) {
@@ -59,6 +60,7 @@ export const loginApi = async (
 export const registerApi = async (
   payload: RegisterRequestDto,
 ): Promise<void> => {
+  console.log(BASE_URL);
   await apiClient.post("auth/register", payload);
 };
 

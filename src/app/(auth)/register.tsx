@@ -112,8 +112,8 @@ export default function RegisterScreen() {
             "Your business account has been created successfully.",
           );
           router.replace({
-            pathname: "/(auth)/createprofile",
-            params: { email: formData.email },
+            pathname: "/(auth)/login",
+            params: { email: formData.email, password:formData.password },
           });
         }
       },
