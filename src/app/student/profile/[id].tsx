@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useColorScheme,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProfileById } from "@/api/hooks/useProfile";
+import { sendConnectionRequest } from "@/api/hooks/useConnection"; // Adjust path to where your service file lives
+
 
 export interface ExperienceDto {
   id?: string;
@@ -85,7 +88,6 @@ export interface AddCertificationDto {
 const formatFriendlyDate = (dateString?: string) => {
   if (!dateString) return "";
   try {
-    // If it's just a year or partial format like "YYYY-MM"
     if (dateString.length === 7 && dateString.includes("-")) {
       const [year, month] = dateString.split("-");
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -116,6 +118,7 @@ export default function UserProfileScreen() {
 
   const router = useRouter();
   const [isConnected, setIsConnected] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const { data: profile, isLoading, error } = useProfileById(profileId);
 
@@ -130,8 +133,29 @@ export default function UserProfileScreen() {
     });
   };
 
-  const handleConnectPress = () => {
-    setIsConnected(!isConnected);
+  const handleConnectPress = async () => {
+    if (!profile?.id || isSending) return;
+
+    // If already connected, handle state or custom disconnect flow if needed
+    if (isConnected) {
+      setIsConnected(false);
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      await sendConnectionRequest(profile.id);
+      setIsConnected(true);
+      Alert.alert("Success", "Connection request sent successfully.");
+    } catch (err: any) {
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to send connection request.";
+      Alert.alert("Error", errorMsg);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (isLoading) {
@@ -230,14 +254,25 @@ export default function UserProfileScreen() {
               isConnected && isDark && styles.darkConnectedButton,
             ]}
             onPress={handleConnectPress}
+            disabled={isSending}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name={isConnected ? "checkmark-outline" : "person-add-outline"}
-              size={16}
-              color={isConnected ? (isDark ? "#FFFFFF" : "#006837") : "#FFFFFF"}
-              style={styles.buttonIcon}
-            />
+            {isSending ? (
+              <ActivityIndicator
+                size="small"
+                color={isConnected ? "#006837" : "#FFFFFF"}
+                style={styles.buttonIcon}
+              />
+            ) : (
+              <Ionicons
+                name={isConnected ? "checkmark-outline" : "person-add-outline"}
+                size={16}
+                color={
+                  isConnected ? (isDark ? "#FFFFFF" : "#006837") : "#FFFFFF"
+                }
+                style={styles.buttonIcon}
+              />
+            )}
             <Text
               style={[
                 styles.connectButtonText,

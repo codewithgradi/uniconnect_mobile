@@ -33,6 +33,7 @@ export async function getMyConnections(): Promise<ConnectionProfile[]> {
  */
 export async function getPendingRequests(): Promise<ConnectionRequestDto[]> {
   const response = await apiClient.get<ConnectionRequestDto[]>("/connections/pending");
+  console.log(response.data);
   return response.data;
 }
 
@@ -40,7 +41,7 @@ export async function getPendingRequests(): Promise<ConnectionRequestDto[]> {
  * Send a connection request to another profile.
  */
 export async function sendConnectionRequest(targetProfileId: string): Promise<MessageResponse> {
-  const response = await apiClient.post<MessageResponse>(`/api/connections/${targetProfileId}`);
+  const response = await apiClient.post<MessageResponse>(`/connections/${targetProfileId}`);
   return response.data;
 }
 

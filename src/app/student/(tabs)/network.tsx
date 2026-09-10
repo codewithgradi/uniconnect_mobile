@@ -20,7 +20,86 @@ import {
   rejectConnectionRequest,
   removeConnection,
 } from "@/api/hooks/useConnection";
-import { useSearchProfiles } from "@/api/hooks/useProfile";
+import { useSearchProfiles, useProfileById } from "@/api/hooks/useProfile";
+
+// Small component to fetch and render request user details safely when requester object is null
+function PendingRequestRow({
+  item,
+  isDark,
+  onAccept,
+  onReject,
+  acceptPending,
+  rejectPending,
+}: {
+  item: any;
+  isDark: boolean;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  acceptPending: boolean;
+  rejectPending: boolean;
+}) {
+  const router = useRouter();
+
+  // Fall back to fetching profile if item.requester is null/empty
+  const shouldFetchProfile = !item?.requester || !item.requester.firstName;
+  const { data: fetchedProfile } = useProfileById(
+    shouldFetchProfile ? item?.requesterId : "",
+  );
+
+  const requester = item?.requester || fetchedProfile || {};
+  const firstName = requester.firstName || "";
+  const lastName = requester.lastName || "";
+  const fullName = `${firstName} ${lastName}`.trim() || "Loading User...";
+  const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}` || "U";
+  const role =
+    requester.headline ||
+    requester.programme ||
+    requester.institution ||
+    "Student / Alum";
+
+  return (
+    <View style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}>
+      <TouchableOpacity
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+        }}
+        onPress={() =>
+          router.push(`/student/profile/${item.requesterId}` as any)
+        }
+      >
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarInitials}>{initials}</Text>
+        </View>
+        <View style={styles.info}>
+          <Text
+            style={[styles.name, isDark ? styles.darkText : styles.lightText]}
+          >
+            {fullName}
+          </Text>
+          <Text style={styles.role}>{role}</Text>
+        </View>
+      </TouchableOpacity>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
+          style={styles.acceptBtn}
+          onPress={() => onAccept(item.requesterId)}
+          disabled={acceptPending}
+        >
+          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.rejectBtn}
+          onPress={() => onReject(item.requesterId)}
+          disabled={rejectPending}
+        >
+          <Ionicons name="close" size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function NetworkScreen() {
   const isDark = useColorScheme() === "dark";
@@ -154,66 +233,17 @@ export default function NetworkScreen() {
               No pending connection requests.
             </Text>
           ) : (
-            requests.map((item) => {
-              const fullName = `${item.requester.firstName} ${item.requester.lastName}`;
-              const initials = `${item.requester.firstName?.[0] || ""}${item.requester.lastName?.[0] || ""}`;
-
-              return (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.card,
-                    isDark ? styles.darkCard : styles.lightCard,
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      flexDirection: "row",
-                      alignItems: "center",
-                    }}
-                    onPress={() =>
-                      router.push(`/student/profile/${item.requesterId}` as any)
-                    }
-                  >
-                    <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarInitials}>{initials}</Text>
-                    </View>
-                    <View style={styles.info}>
-                      <Text
-                        style={[
-                          styles.name,
-                          isDark ? styles.darkText : styles.lightText,
-                        ]}
-                      >
-                        {fullName}
-                      </Text>
-                      <Text style={styles.role}>
-                        {item.requester.headline ||
-                          item.requester.institution ||
-                          "Student / Alum"}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      style={styles.acceptBtn}
-                      onPress={() => acceptMutation.mutate(item.requesterId)}
-                      disabled={acceptMutation.isPending}
-                    >
-                      <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.rejectBtn}
-                      onPress={() => rejectMutation.mutate(item.requesterId)}
-                      disabled={rejectMutation.isPending}
-                    >
-                      <Ionicons name="close" size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })
+            requests.map((item) => (
+              <PendingRequestRow
+                key={item.id}
+                item={item}
+                isDark={isDark}
+                onAccept={(id) => acceptMutation.mutate(id)}
+                onReject={(id) => rejectMutation.mutate(id)}
+                acceptPending={acceptMutation.isPending}
+                rejectPending={rejectMutation.isPending}
+              />
+            ))
           )}
         </View>
       )}
@@ -246,8 +276,12 @@ export default function NetworkScreen() {
             </Text>
           ) : (
             connections.map((item) => {
-              const fullName = `${item.firstName} ${item.lastName}`;
-              const initials = `${item.firstName?.[0] || ""}${item.lastName?.[0] || ""}`;
+              const firstName = item?.firstName || "";
+              const lastName = item?.lastName || "";
+              const fullName =
+                `${firstName} ${lastName}`.trim() || "Unknown User";
+              const initials =
+                `${firstName?.[0] || ""}${lastName?.[0] || ""}` || "U";
 
               return (
                 <View
@@ -359,8 +393,12 @@ export default function NetworkScreen() {
             </View>
           ) : (
             profiles.map((item: any) => {
-              const fullName = `${item.firstName} ${item.lastName}`;
-              const initials = `${item.firstName?.[0] || ""}${item.lastName?.[0] || ""}`;
+              const firstName = item?.firstName || "";
+              const lastName = item?.lastName || "";
+              const fullName =
+                `${firstName} ${lastName}`.trim() || "Unknown User";
+              const initials =
+                `${firstName?.[0] || ""}${lastName?.[0] || ""}` || "U";
 
               return (
                 <TouchableOpacity
