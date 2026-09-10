@@ -19,11 +19,11 @@ export default function WelcomeScreen() {
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
       <View style={styles.content}>
-        <Text style={[styles.brand, { color: "#006837" }]}>RICHFIELD</Text>
+        <Text style={[styles.brand, { color: "#006837" }]}>UNICONNECT</Text>
         <Text
           style={[styles.subtitle, isDark ? styles.darkSub : styles.lightSub]}
         >
-          Graduate Institute of Technology
+          Where talent meet oportunity
         </Text>
       </View>
 

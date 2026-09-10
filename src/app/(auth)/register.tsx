@@ -7,6 +7,8 @@ import {
   useColorScheme,
   Alert,
   Platform,
+  KeyboardAvoidingView,
+  TouchableOpacity,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedInput } from "../../components/ThemedInput";
@@ -31,6 +33,7 @@ export default function RegisterScreen() {
     companyName: "",
     studentNumber: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const { mutate: register, isPending: isRegistering } = useRegister();
   const { mutate: sendOtp, isPending: isSendingOtp } = useSendOtp();
@@ -48,11 +51,9 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = () => {
-    console.log("👉 1. Register Button Pressed");
-    console.log("Payload:", { ...formData, userType });
+    if (isLoading) return;
 
     if (!formData.email || !formData.password) {
-      console.warn("❌ Validation Failed: Missing Email or Password");
       showNotification("Validation Error", "Email and password are required.");
       return;
     }
@@ -71,13 +72,8 @@ export default function RegisterScreen() {
       companyName: isBusinessRole ? formData.companyName : undefined,
     };
 
-    console.log("👉 2. Dispatching register mutation...");
-
     register(payload, {
       onSuccess: (data) => {
-        console.log("✅ 3. Registration Successful Response:", data);
-
-        // Check if user type needs verification routing (Students & Alumni)
         const requiresVerification =
           userType === "student" || userType === "alumni";
 
@@ -86,14 +82,12 @@ export default function RegisterScreen() {
             { email: formData.email },
             {
               onSuccess: () => {
-                console.log("✅ 4. OTP Sent successfully. Navigating...");
                 router.push({
                   pathname: "/(auth)/verification",
                   params: { email: formData.email },
                 });
               },
-              onError: (err: any) => {
-                console.error("❌ 4. OTP Dispatch Failed:", err);
+              onError: () => {
                 showNotification(
                   "Account Created",
                   "Account created, but failed to send verification code. Proceeding to verification page.",
@@ -106,133 +100,167 @@ export default function RegisterScreen() {
             },
           );
         } else {
-          // Non-student/alumni (e.g., Business) - Redirect and autofill login
           showNotification(
             "Registration Successful",
             "Your business account has been created successfully.",
           );
           router.replace({
             pathname: "/(auth)/login",
-            params: { email: formData.email, password:formData.password },
+            params: { email: formData.email, password: formData.password },
           });
         }
       },
       onError: (err: any) => {
-        console.error("❌ 3. Registration Request Failed:", err);
-
         let message = "Registration failed. Check connection or inputs.";
         const errorData = err?.response?.data;
 
         if (Array.isArray(errorData)) {
-          // Handle ASP.NET Identity array error structures (like DuplicateUserName)
           message = errorData.map((e) => e.description).join("\n");
         } else {
           message =
             errorData?.detail || errorData?.message || err?.message || message;
         }
 
-        console.log(
-          "❌ 3. Detailed Server Error:",
-          JSON.stringify(errorData, null, 2),
-        );
-        showNotification("Registration Failed", message);
+        setTimeout(() => {
+          showNotification("Registration Failed", message);
+        }, 100);
       },
     });
   };
 
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[
-        styles.container,
-        isDark ? styles.darkBg : styles.lightBg,
-      ]}
+    <KeyboardAvoidingView
+      style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.header}>
-        <Text
-          style={[styles.title, isDark ? styles.darkText : styles.lightText]}
-        >
-          Create {rawRole} Account
-        </Text>
-        <Text style={styles.subtitle}>
-          Enter your details below to register
-        </Text>
-      </View>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.header}>
+          <Text
+            style={[styles.title, isDark ? styles.darkText : styles.lightText]}
+          >
+            Create {rawRole} Account
+          </Text>
+          <Text style={styles.subtitle}>
+            Enter your details below to register
+          </Text>
+        </View>
 
-      <View style={styles.form}>
-        <ThemedInput
-          placeholder="Email Address"
-          value={formData.email}
-          onChangeText={(v) => setFormData({ ...formData, email: v })}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <ThemedInput
-          placeholder="Password"
-          value={formData.password}
-          onChangeText={(v) => setFormData({ ...formData, password: v })}
-          secureTextEntry
-        />
-
-        {isAcademicRole && (
-          <>
-            <ThemedInput
-              placeholder="First Name"
-              value={formData.firstName}
-              onChangeText={(v) => setFormData({ ...formData, firstName: v })}
-            />
-            <ThemedInput
-              placeholder="Last Name"
-              value={formData.lastName}
-              onChangeText={(v) => setFormData({ ...formData, lastName: v })}
-            />
-            <ThemedInput
-              placeholder="Student Number"
-              value={formData.studentNumber}
-              onChangeText={(v) =>
-                setFormData({ ...formData, studentNumber: v })
-              }
-            />
-            <ThemedInput
-              placeholder="Programme (e.g., BSc IT)"
-              value={formData.programme}
-              onChangeText={(v) => setFormData({ ...formData, programme: v })}
-            />
-          </>
-        )}
-
-        {isBusinessRole && (
+        <View style={styles.form}>
           <ThemedInput
-            placeholder="Company Name"
-            value={formData.companyName}
-            onChangeText={(v) => setFormData({ ...formData, companyName: v })}
+            placeholder="Email Address"
+            value={formData.email}
+            onChangeText={(v) => setFormData({ ...formData, email: v })}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
-        )}
 
-        <ThemedButtonPrimary
-          title={isLoading ? "Creating Account..." : "Register"}
-          onPress={handleRegister}
-          loading={isLoading}
-          style={{ marginTop: 24 }}
-        />
-      </View>
-    </ScrollView>
+          <View style={styles.passwordWrapper}>
+            <View style={styles.passwordInputContainer}>
+              <ThemedInput
+                placeholder="Password"
+                value={formData.password}
+                onChangeText={(v) => setFormData({ ...formData, password: v })}
+                secureTextEntry={!showPassword}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.eyeToggleBtn}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Text style={styles.eyeToggleText}>
+                {showPassword ? "Hide" : "Show"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {isAcademicRole && (
+            <>
+              <ThemedInput
+                placeholder="First Name"
+                value={formData.firstName}
+                onChangeText={(v) => setFormData({ ...formData, firstName: v })}
+              />
+              <ThemedInput
+                placeholder="Last Name"
+                value={formData.lastName}
+                onChangeText={(v) => setFormData({ ...formData, lastName: v })}
+              />
+              <ThemedInput
+                placeholder="Student Number"
+                value={formData.studentNumber}
+                onChangeText={(v) =>
+                  setFormData({ ...formData, studentNumber: v })
+                }
+              />
+              <ThemedInput
+                placeholder="Programme (e.g., BSc IT)"
+                value={formData.programme}
+                onChangeText={(v) => setFormData({ ...formData, programme: v })}
+              />
+            </>
+          )}
+
+          {isBusinessRole && (
+            <ThemedInput
+              placeholder="Company Name"
+              value={formData.companyName}
+              onChangeText={(v) => setFormData({ ...formData, companyName: v })}
+            />
+          )}
+
+          <ThemedButtonPrimary
+            title={isLoading ? "Creating Account..." : "Register"}
+            onPress={handleRegister}
+            disabled={isLoading}
+            style={{ marginTop: 24 }}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: "space-between",
-    paddingVertical: 48,
+    paddingTop: 60,
+    paddingBottom: 48,
   },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  header: { marginTop: 24 },
+  header: { marginBottom: 20 },
   title: { fontSize: 26, fontWeight: "700" },
   subtitle: { fontSize: 14, color: "#6B7280", marginTop: 6 },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
-  form: { marginTop: 24, width: "100%" },
+  form: { marginTop: 12, width: "100%" },
+  passwordWrapper: {
+    position: "relative",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  passwordInputContainer: {
+    width: "100%",
+  },
+  eyeToggleBtn: {
+    position: "absolute",
+    right: 16,
+    top: 16,
+    zIndex: 10,
+    padding: 4,
+  },
+  eyeToggleText: {
+    color: "#006837",
+    fontSize: 14,
+    fontWeight: "600",
+  },
 });

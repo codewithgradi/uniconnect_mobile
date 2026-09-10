@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Easing,
@@ -12,11 +13,17 @@ import {
   View,
 } from "react-native";
 import Svg, { Path, Circle, Line } from "react-native-svg";
+import { useRouter } from "expo-router";
 import { useAdminAnalytics } from "@/api/hooks/useAdminAnalytics";
+import { useLogout } from "@/api/hooks/useAuth";
 
 export default function AdminDashboardScreen() {
   const isDark = useColorScheme() === "dark";
-  const { data: apiData, isLoading, isError } = useAdminAnalytics();
+  const router = useRouter();
+  const { data: apiData, isLoading, isError, refetch } = useAdminAnalytics();
+
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
+
   const chartWidth = Dimensions.get("window").width - 72;
 
   // Motion & Animation values
@@ -89,25 +96,10 @@ export default function AdminDashboardScreen() {
     ).start();
   }, []);
 
-  // Fallback data if query is loading or uninitialized
-  const data = apiData || {
-    totalUsers: 1248,
-    pendingBusinessVerifications: 342,
-    totalOpportunities: 23,
-    recentRegistrations: [
-      { date: "2026-09-01", count: 12 },
-      { date: "2026-09-02", count: 19 },
-      { date: "2026-09-03", count: 15 },
-      { date: "2026-09-04", count: 28 },
-      { date: "2026-09-05", count: 22 },
-      { date: "2026-09-06", count: 35 },
-    ],
-  };
-
   const stats = [
     {
       label: "Total Users",
-      value: data.totalUsers?.toLocaleString() || "1,248",
+      value: apiData?.totalUsers?.toLocaleString() ?? "0",
       change: "+12.4%",
       icon: "people",
       color: "#10B981",
@@ -115,7 +107,7 @@ export default function AdminDashboardScreen() {
     },
     {
       label: "Pending Verifications",
-      value: data.pendingBusinessVerifications?.toString() || "342",
+      value: apiData?.pendingBusinessVerifications?.toString() ?? "0",
       change: "Action Req.",
       icon: "checkmark-circle",
       color: "#3B82F6",
@@ -123,7 +115,7 @@ export default function AdminDashboardScreen() {
     },
     {
       label: "Pending Approvals",
-      value: data.totalOpportunities?.toString() || "23",
+      value: apiData?.totalOpportunities?.toString() ?? "0",
       change: "Priority",
       icon: "time",
       color: "#F59E0B",
@@ -132,7 +124,7 @@ export default function AdminDashboardScreen() {
   ];
 
   // --- Line Chart Helpers ---
-  const regList = data.recentRegistrations || [];
+  const regList = apiData?.recentRegistrations || [];
   const maxReg = Math.max(...regList.map((r) => r.count), 1);
   const linePoints = regList.map((item, index) => {
     const x =
@@ -165,7 +157,7 @@ export default function AdminDashboardScreen() {
               {isLoading
                 ? "SYNCING..."
                 : isError
-                  ? "OFFLINE CACHE"
+                  ? "ERROR FETCHING"
                   : "SYSTEM ONLINE"}
             </Text>
           </View>
@@ -186,137 +178,246 @@ export default function AdminDashboardScreen() {
               Real-time platform telemetry & operations
             </Text>
           </View>
-          <TouchableOpacity style={styles.profileGlowBtn} activeOpacity={0.8}>
-            <Ionicons name="shield-checkmark" size={20} color="#10B981" />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-
-      {/* Futuristic Cyber Analytics Grid */}
-      <Animated.View
-        style={{
-          opacity: statsFade,
-          transform: [{ translateY: statsTranslate }],
-        }}
-      >
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>SYSTEM METRICS</Text>
-          <View style={styles.titleLine} />
-        </View>
-
-        <View style={styles.grid}>
-          {stats.map((item, idx) => (
-            <TouchableOpacity
-              key={idx}
-              activeOpacity={0.85}
-              style={[
-                styles.statCard,
-                isDark ? styles.darkCard : styles.lightCard,
-                {
-                  borderColor: isDark
-                    ? "rgba(255,255,255,0.08)"
-                    : "rgba(0,0,0,0.06)",
-                },
-              ]}
-            >
-              <View style={styles.cardCornerAccent} />
-              <View style={styles.statTop}>
-                <View
-                  style={[
-                    styles.iconBadge,
-                    { backgroundColor: item.glowColor },
-                  ]}
-                >
-                  <Ionicons
-                    name={item.icon as any}
-                    size={20}
-                    color={item.color}
-                  />
-                </View>
-                <View
-                  style={[
-                    styles.changeBadge,
-                    { backgroundColor: item.glowColor },
-                  ]}
-                >
-                  <Text style={[styles.changeText, { color: item.color }]}>
-                    {item.change}
-                  </Text>
-                </View>
-              </View>
-
-              <Text
-                style={[
-                  styles.statValue,
-                  isDark ? styles.darkText : styles.lightText,
-                ]}
-              >
-                {item.value}
-              </Text>
-              <Text style={styles.statLabel}>{item.label}</Text>
+          <View style={styles.headerActionRow}>
+            <TouchableOpacity style={styles.profileGlowBtn} activeOpacity={0.8}>
+              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
             </TouchableOpacity>
-          ))}
-        </View>
-      </Animated.View>
-
-      {/* Daily User Registrations Line Graph */}
-      <Animated.View
-        style={{
-          opacity: chartFade,
-          transform: [{ translateY: chartTranslate }],
-        }}
-      >
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>REGISTRATION TELEMETRY</Text>
-          <View style={styles.titleLine} />
-        </View>
-
-        <View
-          style={[
-            styles.chartCard,
-            isDark ? styles.darkCard : styles.lightCard,
-            styles.glowBorder,
-          ]}
-        >
-          <View style={styles.cardCornerAccent} />
-          <Svg height={130} width={chartWidth}>
-            <Line
-              x1="10"
-              y1="30"
-              x2={chartWidth - 10}
-              y2="30"
-              stroke={isDark ? "#1F2937" : "#E2E8F0"}
-              strokeDasharray="4 4"
-            />
-            <Line
-              x1="10"
-              y1="70"
-              x2={chartWidth - 10}
-              y2="70"
-              stroke={isDark ? "#1F2937" : "#E2E8F0"}
-              strokeDasharray="4 4"
-            />
-            <Path d={pathD} fill="none" stroke="#10B981" strokeWidth="2.5" />
-            {regList.map((item, index) => {
-              const x =
-                regList.length > 1
-                  ? (index / (regList.length - 1)) * (chartWidth - 20) + 10
-                  : 10;
-              const y = 110 - (item.count / maxReg) * 80;
-              return (
-                <Circle key={index} cx={x} cy={y} r="3.5" fill="#10B981" />
-              );
-            })}
-          </Svg>
-          <View style={styles.xLabels}>
-            {regList.map((r, i) => (
-              <Text key={i} style={styles.chartLabel}>
-                {r.date ? r.date.substring(8, 10) + " Sep" : ""}
-              </Text>
-            ))}
+            <TouchableOpacity
+              style={styles.logoutGlowBtn}
+              activeOpacity={0.8}
+              onPress={() =>
+                logout(undefined, {
+                  onSuccess: () => {
+                    router.replace("/login");
+                  },
+                })
+              }
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Animated.View>
+
+      {/* Quick Action Navigation Bar */}
+      <View style={styles.quickNavContainer}>
+        <TouchableOpacity
+          style={[
+            styles.quickNavLink,
+            isDark ? styles.darkCard : styles.lightCard,
+          ]}
+          activeOpacity={0.8}
+          onPress={() => router.push("/admin/eventpost" as any)}
+        >
+          <View style={styles.quickNavLeft}>
+            <View style={styles.quickNavIconBadge}>
+              <Ionicons name="calendar-sharp" size={18} color="#10B981" />
+            </View>
+            <View>
+              <Text
+                style={[
+                  styles.quickNavTitle,
+                  isDark ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Post Institutional Event
+              </Text>
+              <Text style={styles.quickNavSubtitle}>
+                Publish new announcements & schedules
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#64748B" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Loading Indicator or Error State */}
+      {isLoading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text
+            style={[
+              styles.loadingText,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+          >
+            Loading analytics telemetry...
+          </Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle-outline" size={40} color="#EF4444" />
+          <Text
+            style={[
+              styles.errorText,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+          >
+            Failed to load analytics data.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Retry Connection</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* Futuristic Cyber Analytics Grid */}
+          <Animated.View
+            style={{
+              opacity: statsFade,
+              transform: [{ translateY: statsTranslate }],
+            }}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>SYSTEM METRICS</Text>
+              <View style={styles.titleLine} />
+            </View>
+
+            <View style={styles.grid}>
+              {stats.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.statCard,
+                    isDark ? styles.darkCard : styles.lightCard,
+                    {
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(0,0,0,0.06)",
+                    },
+                  ]}
+                >
+                  <View style={styles.cardCornerAccent} />
+                  <View style={styles.statTop}>
+                    <View
+                      style={[
+                        styles.iconBadge,
+                        { backgroundColor: item.glowColor },
+                      ]}
+                    >
+                      <Ionicons
+                        name={item.icon as any}
+                        size={20}
+                        color={item.color}
+                      />
+                    </View>
+                    <View
+                      style={[
+                        styles.changeBadge,
+                        { backgroundColor: item.glowColor },
+                      ]}
+                    >
+                      <Text style={[styles.changeText, { color: item.color }]}>
+                        {item.change}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.statValue,
+                      isDark ? styles.darkText : styles.lightText,
+                    ]}
+                  >
+                    {item.value}
+                  </Text>
+                  <Text style={styles.statLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* Daily User Registrations Line Graph */}
+          <Animated.View
+            style={{
+              opacity: chartFade,
+              transform: [{ translateY: chartTranslate }],
+            }}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>REGISTRATION TELEMETRY</Text>
+              <View style={styles.titleLine} />
+            </View>
+
+            <View
+              style={[
+                styles.chartCard,
+                isDark ? styles.darkCard : styles.lightCard,
+                styles.glowBorder,
+              ]}
+            >
+              <View style={styles.cardCornerAccent} />
+              {regList.length === 0 ? (
+                <View style={styles.emptyChart}>
+                  <Text style={styles.statLabel}>
+                    No registration data available
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Svg height={130} width={chartWidth}>
+                    <Line
+                      x1="10"
+                      y1="30"
+                      x2={chartWidth - 10}
+                      y2="30"
+                      stroke={isDark ? "#1F2937" : "#E2E8F0"}
+                      strokeDasharray="4 4"
+                    />
+                    <Line
+                      x1="10"
+                      y1="70"
+                      x2={chartWidth - 10}
+                      y2="70"
+                      stroke={isDark ? "#1F2937" : "#E2E8F0"}
+                      strokeDasharray="4 4"
+                    />
+                    <Path
+                      d={pathD}
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth="2.5"
+                    />
+                    {regList.map((item, index) => {
+                      const x =
+                        regList.length > 1
+                          ? (index / (regList.length - 1)) * (chartWidth - 20) +
+                            10
+                          : 10;
+                      const y = 110 - (item.count / maxReg) * 80;
+                      return (
+                        <Circle
+                          key={index}
+                          cx={x}
+                          cy={y}
+                          r="3.5"
+                          fill="#10B981"
+                        />
+                      );
+                    })}
+                  </Svg>
+                  <View style={styles.xLabels}>
+                    {regList.map((r, i) => (
+                      <Text key={i} style={styles.chartLabel}>
+                        {r.date ? r.date.substring(8, 10) + " Sep" : ""}
+                      </Text>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+          </Animated.View>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -326,6 +427,34 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   lightBg: { backgroundColor: "#F8FAFC" },
   darkBg: { backgroundColor: "#0B0F17" },
+
+  centerContainer: {
+    paddingVertical: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  errorText: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#10B981",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12,
+  },
 
   // HUD Elements
   hudBar: {
@@ -369,7 +498,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   welcomeText: {
     fontSize: 26,
@@ -381,6 +510,11 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginTop: 2,
   },
+  headerActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   profileGlowBtn: {
     width: 44,
     height: 44,
@@ -390,6 +524,54 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(16, 185, 129, 0.25)",
+  },
+  logoutGlowBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.25)",
+  },
+
+  // Quick Nav Link Styles
+  quickNavContainer: {
+    marginBottom: 20,
+  },
+  quickNavLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
+    backgroundColor: "rgba(16, 185, 129, 0.03)",
+  },
+  quickNavLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  quickNavIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  quickNavTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  quickNavSubtitle: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
+    fontWeight: "600",
   },
 
   // Section Headers
@@ -479,6 +661,11 @@ const styles = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
     marginBottom: 6,
+  },
+  emptyChart: {
+    height: 130,
+    justifyContent: "center",
+    alignItems: "center",
   },
   xLabels: {
     flexDirection: "row",

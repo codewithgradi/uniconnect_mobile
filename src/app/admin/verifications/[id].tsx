@@ -7,108 +7,16 @@ import {
   TouchableOpacity,
   useColorScheme,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
-export interface OpportunityDetailVerificationDto {
-  id: string;
-  title: string;
-  jobType: string;
-  location: string;
-  salaryRange: string;
-  description: string;
-  requirements: string[];
-  createdAt: string;
-  business: {
-    id: string;
-    companyName: string;
-    registrationNumber: string;
-    industry: string;
-    website: string;
-    email: string;
-    verificationStatus: "Verified" | "Pending" | "Unverified";
-  };
-}
-
-const MOCK_OPPORTUNITY_DETAILS: Record<
-  string,
-  OpportunityDetailVerificationDto
-> = {
-  "1": {
-    id: "1",
-    title: "Flutter Developer Intern",
-    jobType: "Internship",
-    location: "Cape Town, South Africa",
-    salaryRange: "R8,000 - R12,000 / month",
-    description:
-      "Looking for a passionate Flutter Developer Intern to build cross-platform mobile apps.",
-    requirements: [
-      "Basic Dart & Flutter SDK",
-      "RESTful API integration",
-      "Team player",
-    ],
-    createdAt: "2 hours ago",
-    business: {
-      id: "b1",
-      companyName: "TechCorp Solutions",
-      registrationNumber: "2021/847291/07",
-      industry: "Software Development",
-      website: "https://techcorp.co.za",
-      email: "careers@techcorp.co.za",
-      verificationStatus: "Verified",
-    },
-  },
-  "2": {
-    id: "2",
-    title: "Junior Frontend Developer",
-    jobType: "Full-time",
-    location: "Johannesburg, South Africa",
-    salaryRange: "R20,000 - R28,000 / month",
-    description:
-      "Join our team to build scalable React and Next.js applications.",
-    requirements: [
-      "HTML, CSS, TypeScript",
-      "React / Next.js experience",
-      "Git workflows",
-    ],
-    createdAt: "5 hours ago",
-    business: {
-      id: "b2",
-      companyName: "CreativeTech",
-      registrationNumber: "2019/332110/07",
-      industry: "Digital Agency",
-      website: "https://creativetech.dev",
-      email: "hr@creativetech.dev",
-      verificationStatus: "Pending",
-    },
-  },
-  "3": {
-    id: "3",
-    title: "Data Science Intern",
-    jobType: "Internship",
-    location: "Pretoria, South Africa",
-    salaryRange: "R10,000 - R15,000 / month",
-    description:
-      "Analyze dataset trends and train machine learning models for client solutions.",
-    requirements: [
-      "Python & Pandas/PyTorch",
-      "SQL database querying",
-      "Statistics background",
-    ],
-    createdAt: "1 day ago",
-    business: {
-      id: "b3",
-      companyName: "DataNova",
-      registrationNumber: "2022/990123/07",
-      industry: "Analytics & AI",
-      website: "https://datanova.ai",
-      email: "jobs@datanova.ai",
-      verificationStatus: "Verified",
-    },
-  },
-};
+import {
+  useApproveOpportunity,
+  useRejectOpportunity,
+  useOpportunityById,
+} from "@/api/hooks/useOpportunity";
 
 export default function OpportunityVerificationDetailScreen() {
   const isDark = useColorScheme() === "dark";
@@ -116,24 +24,99 @@ export default function OpportunityVerificationDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const details =
-    id && MOCK_OPPORTUNITY_DETAILS[id]
-      ? MOCK_OPPORTUNITY_DETAILS[id]
-      : MOCK_OPPORTUNITY_DETAILS["1"];
+  const { data: opportunity, isLoading, isError } = useOpportunityById(id);
+  const approveMutation = useApproveOpportunity();
+  const rejectMutation = useRejectOpportunity();
 
   const handleApprove = () => {
-    Alert.alert(
-      "Opportunity Approved",
-      `${details.title} is now published live.`,
-      [{ text: "OK", onPress: () => router.back() }],
-    );
+    if (!id) return;
+    approveMutation.mutate(id, {
+      onSuccess: () => {
+        Alert.alert(
+          "Opportunity Approved",
+          `${opportunity?.title || "Opportunity"} is now published live.`,
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+      },
+      onError: (error: any) => {
+        Alert.alert(
+          "Error",
+          error?.message || "Failed to approve opportunity.",
+        );
+      },
+    });
   };
 
   const handleReject = () => {
-    Alert.alert("Opportunity Rejected", `${details.title} request rejected.`, [
-      { text: "OK", onPress: () => router.back() },
-    ]);
+    if (!id) return;
+    rejectMutation.mutate(id, {
+      onSuccess: () => {
+        Alert.alert(
+          "Opportunity Rejected",
+          `${opportunity?.title || "Opportunity"} request rejected.`,
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+      },
+      onError: (error: any) => {
+        Alert.alert("Error", error?.message || "Failed to reject opportunity.");
+      },
+    });
   };
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centered,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text
+          style={[
+            styles.loadingText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Loading opportunity details...
+        </Text>
+      </View>
+    );
+  }
+
+  if (isError || !opportunity) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centered,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <Ionicons name="alert-circle-outline" size={48} color="#DC2626" />
+        <Text
+          style={[
+            styles.errorTitle,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Failed to load details
+        </Text>
+        <Text style={styles.errorSub}>
+          Could not fetch the requested opportunity information.
+        </Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const isMutating = approveMutation.isPending || rejectMutation.isPending;
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -144,24 +127,33 @@ export default function OpportunityVerificationDetailScreen() {
           { paddingBottom: 120 + insets.bottom },
         ]}
       >
+        {/* Opportunity Card */}
         <View
           style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}
         >
           <Text style={styles.sectionBadge}>OPPORTUNITY DETAILS</Text>
           <Text
             style={[styles.title, isDark ? styles.darkText : styles.lightText]}
+            numberOfLines={2}
           >
-            {details.title}
+            {opportunity.title}
           </Text>
 
           <View style={styles.metaRow}>
-            <View style={styles.typeBadge}>
-              <Text style={styles.typeBadgeText}>{details.jobType}</Text>
+            {opportunity.targetProgramme && (
+              <View style={styles.typeBadge}>
+                <Text style={styles.typeBadgeText} numberOfLines={1}>
+                  {opportunity.targetProgramme}
+                </Text>
+              </View>
+            )}
+            <View style={styles.metaInfo}>
+              <Ionicons name="time-outline" size={12} color="#6B7280" />
+              <Text style={styles.metaText} numberOfLines={1}>
+                Submitted {opportunity.createdAtUtc}
+              </Text>
             </View>
-            <Text style={styles.metaText}>{details.location}</Text>
           </View>
-
-          <Text style={styles.salaryText}>{details.salaryRange}</Text>
 
           <Text
             style={[
@@ -171,37 +163,25 @@ export default function OpportunityVerificationDetailScreen() {
           >
             Description
           </Text>
-          <Text style={styles.bodyText}>{details.description}</Text>
-
-          <Text
-            style={[
-              styles.subHeading,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Requirements
-          </Text>
-          {details.requirements.map((req, idx) => (
-            <View key={idx} style={styles.bulletRow}>
-              <Text style={styles.bulletPoint}>•</Text>
-              <Text style={styles.bodyText}>{req}</Text>
-            </View>
-          ))}
+          <Text style={styles.bodyText}>{opportunity.description}</Text>
         </View>
 
+        {/* Status Card */}
         <View
           style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}
         >
           <View style={styles.businessHeader}>
-            <Text style={styles.sectionBadge}>BUSINESS PROFILE</Text>
+            <Text style={styles.sectionBadge}>STATUS & SUBMISSION</Text>
             <View
               style={[
                 styles.statusChip,
                 {
                   backgroundColor:
-                    details.business.verificationStatus === "Verified"
+                    opportunity.status === "Published"
                       ? "#D1FAE5"
-                      : "#FEF3C7",
+                      : opportunity.status === "PendingApproval"
+                        ? "#FEF3C7"
+                        : "#FEE2E2",
                 },
               ]}
             >
@@ -210,53 +190,32 @@ export default function OpportunityVerificationDetailScreen() {
                   styles.statusChipText,
                   {
                     color:
-                      details.business.verificationStatus === "Verified"
+                      opportunity.status === "Published"
                         ? "#065F46"
-                        : "#92400E",
+                        : opportunity.status === "PendingApproval"
+                          ? "#92400E"
+                          : "#DC2626",
                   },
                 ]}
+                numberOfLines={1}
               >
-                {details.business.verificationStatus}
+                {opportunity.status}
               </Text>
             </View>
           </View>
 
-          <Text
-            style={[
-              styles.companyName,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            {details.business.companyName}
-          </Text>
-
           <View style={styles.infoGrid}>
             <View style={styles.infoItem}>
-              <Ionicons name="card-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>
-                Reg No: {details.business.registrationNumber}
+              <Ionicons name="business-outline" size={16} color="#6B7280" />
+              <Text style={styles.infoLabel} numberOfLines={1}>
+                Business ID: {opportunity.businessProfileId}
               </Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Ionicons name="briefcase-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>{details.business.industry}</Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Ionicons name="mail-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>{details.business.email}</Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Ionicons name="globe-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoLabel}>{details.business.website}</Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Floating Action Bar with Dynamic Safe Area Padding */}
+      {/* Floating Action Bar */}
       <View
         style={[
           styles.actionBar,
@@ -264,10 +223,33 @@ export default function OpportunityVerificationDetailScreen() {
           { paddingBottom: Math.max(insets.bottom, 16) },
         ]}
       >
-        <TouchableOpacity style={styles.rejectBtn} onPress={handleReject}>
-          <Text style={styles.rejectBtnText}>Reject Request</Text>
+        <TouchableOpacity
+          style={[styles.rejectBtn, isMutating && { opacity: 0.6 }]}
+          onPress={handleReject}
+          disabled={isMutating}
+        >
+          {rejectMutation.isPending ? (
+            <ActivityIndicator size="small" color="#DC2626" />
+          ) : (
+            <Text style={styles.rejectBtnText} numberOfLines={1}>
+              Reject Request
+            </Text>
+          )}
         </TouchableOpacity>
-       
+
+        <TouchableOpacity
+          style={[styles.approveBtn, isMutating && { opacity: 0.6 }]}
+          onPress={handleApprove}
+          disabled={isMutating}
+        >
+          {approveMutation.isPending ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.approveBtnText} numberOfLines={1}>
+              Approve Request
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -275,10 +257,17 @@ export default function OpportunityVerificationDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centered: { justifyContent: "center", alignItems: "center", padding: 20 },
   scrollContent: { padding: 20 },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  card: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+  card: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
   sectionBadge: {
     fontSize: 10,
     fontWeight: "800",
@@ -287,41 +276,50 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: { fontSize: 20, fontWeight: "800" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    flexWrap: "wrap",
+  },
   typeBadge: {
     backgroundColor: "#E0F2FE",
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingVertical: 3,
+    borderRadius: 6,
+    flexShrink: 1,
   },
   typeBadgeText: { color: "#0284C7", fontSize: 11, fontWeight: "700" },
-  metaText: { fontSize: 12, color: "#6B7280" },
-  salaryText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#006837",
-    marginTop: 10,
+  metaInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexShrink: 1,
   },
+  metaText: { fontSize: 12, color: "#6B7280" },
   subHeading: {
     fontSize: 14,
     fontWeight: "700",
     marginTop: 16,
     marginBottom: 6,
   },
-  bodyText: { fontSize: 13, color: "#6B7280", lineHeight: 18, flex: 1 },
-  bulletRow: { flexDirection: "row", gap: 6, marginBottom: 4 },
-  bulletPoint: { color: "#006837", fontSize: 14 },
+  bodyText: { fontSize: 13, color: "#6B7280", lineHeight: 20 },
   businessHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  companyName: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
-  statusChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  statusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    flexShrink: 0,
+  },
   statusChipText: { fontSize: 10, fontWeight: "800" },
-  infoGrid: { gap: 10 },
+  infoGrid: { gap: 10, marginTop: 12 },
   infoItem: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoLabel: { fontSize: 12, color: "#6B7280" },
+  infoLabel: { fontSize: 12, color: "#6B7280", flex: 1 },
   actionBar: {
     position: "absolute",
     bottom: 0,
@@ -341,6 +339,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
   },
   rejectBtnText: { color: "#DC2626", fontWeight: "700", fontSize: 13 },
   approveBtn: {
@@ -349,8 +348,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
   },
   approveBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  loadingText: { marginTop: 12, fontSize: 13, fontWeight: "600" },
+  errorTitle: { fontSize: 16, fontWeight: "700", marginTop: 12 },
+  errorSub: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  backButton: {
+    marginTop: 16,
+    backgroundColor: "#006837",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  backButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 12 },
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },

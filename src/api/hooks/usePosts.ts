@@ -22,13 +22,17 @@ export interface CommentDto {
 
 export interface PostDto {
   id: string;
+  authorId: string;
   content: string;
-  author: AuthorDto;
-  createdAtUtc: string;
-  reactionsCount: number;
-  commentsCount: number;
+  createdAt: string;
+  commentCount: number;
+  likeCount: number;
+  firstName: string;
+  lastName: string;
+  userEmail: string;
   userReactionType?: string;
   comments?: CommentDto[];
+  isLiked: boolean;
 }
 
 export interface PagedResult<T> {
@@ -72,6 +76,11 @@ export interface PostUI {
   likes: number;
   isLiked: boolean;
   comments: CommentUI[];
+  firstname: string;
+  lastname: string;
+  userEmail: string;
+  likeCount: number;
+  commentCount: number;
 }
 
 /**
@@ -178,21 +187,31 @@ export function usePosts() {
           ? result
           : result.items || (result as any).data || [];
 
-        return items.map(
-          (post): PostUI => ({
+        return items.map((post: PostDto): PostUI => {
+          const authorFullName = [post.firstName, post.lastName]
+            .filter(Boolean)
+            .join(" ");
+          const fallbackAuthor =
+            authorFullName || post.userEmail || "Unknown User";
+          const authorHandle = post.userEmail
+            ? `@${post.userEmail.split("@")[0]}`
+            : `@${fallbackAuthor.toLowerCase().replace(/\s+/g, "")}`;
+
+          return {
             id: post.id || Math.random().toString(),
-            author: post.author
-              ? `${post.author.firstName} ${post.author.lastName}`
-              : "Unknown",
-            handle: post.author
-              ? `@${post.author.firstName?.toLowerCase() || "user"}`
-              : "@unknown",
+            author: fallbackAuthor,
+            handle: authorHandle,
             content: post.content || "",
-            createdAt: post.createdAtUtc
-              ? new Date(post.createdAtUtc).toLocaleDateString()
+            createdAt: post.createdAt
+              ? new Date(post.createdAt).toLocaleDateString()
               : "",
-            likes: post.reactionsCount || 0,
-            isLiked: !!post.userReactionType,
+            likes: post.likeCount || 0,
+            isLiked: post.isLiked ?? !!post.userReactionType,
+            firstname: post.firstName || "",
+            lastname: post.lastName || "",
+            userEmail: post.userEmail || "",
+            likeCount: post.likeCount || 0,
+            commentCount: post.commentCount || 0,
             comments:
               post.comments?.map(
                 (c: any): CommentUI => ({
@@ -209,8 +228,8 @@ export function usePosts() {
                     : "",
                 }),
               ) || [],
-          }),
-        );
+          };
+        });
       });
     },
   });
@@ -233,7 +252,64 @@ export function usePosts() {
   const toggleReactionMutation = useMutation({
     mutationFn: (postId: string) =>
       toggleReaction(postId, { reactionType: "Like" }),
-    onSuccess: () => {
+    onMutate: async (postId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPosts = queryClient.getQueryData(["posts"]);
+
+      queryClient.setQueryData(["posts"], (oldData: any) => {
+        if (!oldData) return oldData;
+
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => {
+            if (Array.isArray(page)) {
+              return page.map((post: PostDto) => {
+                if (post.id === postId) {
+                  const nextIsLiked = !post.isLiked;
+                  return {
+                    ...post,
+                    isLiked: nextIsLiked,
+                    userReactionType: nextIsLiked ? "Like" : undefined,
+                    likeCount: nextIsLiked
+                      ? post.likeCount + 1
+                      : Math.max(0, post.likeCount - 1),
+                  };
+                }
+                return post;
+              });
+            }
+            if (page && Array.isArray(page.items)) {
+              return {
+                ...page,
+                items: page.items.map((post: PostDto) => {
+                  if (post.id === postId) {
+                    const nextIsLiked = !post.isLiked;
+                    return {
+                      ...post,
+                      isLiked: nextIsLiked,
+                      userReactionType: nextIsLiked ? "Like" : undefined,
+                      likeCount: nextIsLiked
+                        ? post.likeCount + 1
+                        : Math.max(0, post.likeCount - 1),
+                    };
+                  }
+                  return post;
+                }),
+              };
+            }
+            return page;
+          }),
+        };
+      });
+
+      return { previousPosts };
+    },
+    onError: (err, postId, context: any) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts"], context.previousPosts);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
@@ -249,7 +325,8 @@ export function usePosts() {
     isFetchingNextPage,
     createPost: createPostMutation.mutateAsync,
     isCreatingPost: createPostMutation.isPending,
-    toggleLike: toggleReactionMutation.mutate,
+    toggleLike: toggleReactionMutation.mutateAsync,
+    isLiking: toggleReactionMutation.isPending,
     addComment: addCommentMutation.mutateAsync,
   };
 }

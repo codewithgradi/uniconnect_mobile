@@ -11,7 +11,10 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ThemedInput } from "../../components/ThemedInput";
-import { InstitutionalEventDto, useInstitutionalEvents } from "@/api/hooks/useEvent";
+import {
+  InstitutionalEventDto,
+  useInstitutionalEvents,
+} from "@/api/hooks/useEvent";
 
 export default function EventsScreen() {
   const isDark = useColorScheme() === "dark";
@@ -19,6 +22,7 @@ export default function EventsScreen() {
   const [activeTab, setActiveTab] = useState<"Upcoming" | "Today" | "Past">(
     "Upcoming",
   );
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const { events, isLoading, isError, refetch, isRefetching } =
     useInstitutionalEvents();
@@ -38,33 +42,44 @@ export default function EventsScreen() {
     return { day, time };
   };
 
-  // Filter Logic mapped to InstitutionalEventDto properties (dateUtc)
-  const filteredEvents = events.filter((event) => {
-    const eventDate = new Date(event.dateUtc);
-    const now = new Date();
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter Logic and Sorting from Latest to Oldest
+  const filteredEvents = events
+    .filter((event) => {
+      const eventDate = new Date(event.dateUtc);
+      const now = new Date();
+      const matchesSearch =
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const isToday = eventDate.toDateString() === now.toDateString();
-    const isUpcoming = eventDate > now && !isToday;
-    const isPast = eventDate < now && !isToday;
+      const isToday = eventDate.toDateString() === now.toDateString();
+      const isUpcoming = eventDate > now && !isToday;
+      const isPast = eventDate < now && !isToday;
 
-    if (!matchesSearch) return false;
-    if (activeTab === "Today") return isToday;
-    if (activeTab === "Upcoming") return isUpcoming || isToday;
-    if (activeTab === "Past") return isPast;
-    return true;
-  });
+      if (!matchesSearch) return false;
+      if (activeTab === "Today") return isToday;
+      if (activeTab === "Upcoming") return isUpcoming || isToday;
+      if (activeTab === "Past") return isPast;
+      return true;
+    })
+    .sort(
+      (a, b) => new Date(b.dateUtc).getTime() - new Date(a.dateUtc).getTime(),
+    );
 
-  // Update your EventCard rendering inside EventsScreen to handle both camelCase and PascalCase safely:
+  // Paginated subset based on scroll visibility
+  const paginatedEvents = filteredEvents.slice(0, visibleCount);
+
+  const handleLoadMore = () => {
+    if (visibleCount < filteredEvents.length) {
+      setVisibleCount((prev) => prev + 10);
+    }
+  };
+
   const renderEventCard = ({ item }: { item: InstitutionalEventDto }) => {
-    const eventDateStr =
-      item.dateUtc || item.dateUtc || new Date().toISOString();
+    const eventDateStr = item.dateUtc || new Date().toISOString();
     const { day, time } = formatEventDate(eventDateStr);
 
-    const title = item.title || item.title || "Untitled Event";
-    const description = item.description || item.description || "";
+    const title = item.title || "Untitled Event";
+    const description = item.description || "";
 
     return (
       <View style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}>
@@ -142,7 +157,10 @@ export default function EventsScreen() {
         <ThemedInput
           placeholder="Search events..."
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            setVisibleCount(10);
+          }}
         />
       </View>
 
@@ -159,7 +177,10 @@ export default function EventsScreen() {
                   ? styles.darkTabChip
                   : styles.lightTabChip,
             ]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => {
+              setActiveTab(tab);
+              setVisibleCount(10);
+            }}
           >
             <Text
               style={[
@@ -177,19 +198,28 @@ export default function EventsScreen() {
         ))}
       </View>
 
-      {/* Events List */}
+      {/* Events List with Lazy Loading */}
       <FlatList
-        data={filteredEvents}
+        data={paginatedEvents}
         keyExtractor={(item) => item.id}
         renderItem={renderEventCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
             tintColor="#006837"
           />
+        }
+        ListFooterComponent={
+          visibleCount < filteredEvents.length ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color="#006837" />
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -259,6 +289,10 @@ const styles = StyleSheet.create({
   },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionBtnText: { color: "#006837", fontSize: 13, fontWeight: "600" },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: "center",
+  },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",

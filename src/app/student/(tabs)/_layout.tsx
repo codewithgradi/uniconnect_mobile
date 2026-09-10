@@ -21,7 +21,7 @@ export default function StudentTabsLayout() {
         tabBarStyle: {
           backgroundColor: isDark ? "#111827" : "#FFFFFF",
           borderTopColor: isDark ? "#374151" : "#E5E7EB",
-          height: 70,
+          height: 120,
           paddingBottom: 8,
           paddingTop: 8,
         },

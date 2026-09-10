@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ThemedInput } from "../../components/ThemedInput";
-import { useChat } from "@/api/hooks/useChat"; // Adjust path to where you placed the generated hook
+import { useChat } from "@/api/hooks/useChat";
 
 interface Message {
   id: string;
@@ -39,7 +39,6 @@ export default function AIAssistantScreen() {
     const userMsgText = inputText.trim();
     setInputText("");
 
-    // Append user message
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: "user",
@@ -81,7 +80,7 @@ export default function AIAssistantScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <ScrollView
@@ -169,7 +168,12 @@ export default function AIAssistantScreen() {
       </ScrollView>
 
       {/* Floating Input Area */}
-      <View style={styles.inputBar}>
+      <View
+        style={[
+          styles.inputBar,
+          isDark ? styles.darkInputBar : styles.lightInputBar,
+        ]}
+      >
         <ThemedInput
           placeholder="Type a message..."
           value={inputText}
@@ -191,10 +195,10 @@ export default function AIAssistantScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16 },
+  container: { flex: 1 },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  messagesContainer: { flex: 1 },
+  messagesContainer: { flex: 1, paddingHorizontal: 16 },
   messagesContent: { paddingBottom: 24 },
   aiIntro: { alignItems: "center", marginVertical: 24 },
   aiAvatar: {
@@ -255,8 +259,18 @@ const styles = StyleSheet.create({
   inputBar: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
+    borderTopWidth: 1,
+  },
+  lightInputBar: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E5E7EB",
+  },
+  darkInputBar: {
+    backgroundColor: "#111827",
+    borderColor: "#1F2937",
   },
   chatInput: { flex: 1, marginVertical: 0 },
   sendButton: {

@@ -5,6 +5,7 @@ export default function AdminRootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       {/* Main Tab Navigator */}
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="eventpost" options={{title:"Event Creation"}} />
 
       {/* Detail Screens rendered inside the Stack */}
       <Stack.Screen

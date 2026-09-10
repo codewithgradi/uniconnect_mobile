@@ -29,7 +29,7 @@ export interface SystemEventAnnouncement {
 export const institutionalApi = {
   getUpcomingEvents: async (): Promise<InstitutionalEventDto[]> => {
     const response = await apiClient.get<any>("/institutional/events");
-    console.log("Raw API Events Response:", response.data);
+    // console.log("Raw API Events Response:", response.data);
 
     // Extract array safely whether it's direct array, wrapped in .data, or .items
     const rawData = Array.isArray(response.data)

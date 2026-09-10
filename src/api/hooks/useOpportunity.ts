@@ -9,6 +9,13 @@ export const useActiveOpportunities = (targetProgramme?: string) => {
     queryFn: () => opportunitiesApi.getActive(targetProgramme),
   });
 };
+export const useOpportunityById = (id: string) => {
+  return useQuery({
+    queryKey: opportunityKeys.detail(id),
+    queryFn: () => opportunitiesApi.getById(id),
+    enabled: !!id,
+  });
+};
 
 export const useMyOpportunities = (businessProfileId: string) => {
   return useQuery({

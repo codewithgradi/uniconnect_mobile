@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,9 @@ export default function UserManagementScreen() {
   const isDark = useColorScheme() === "dark";
   const [activeTab, setActiveTab] = useState<"Students" | "Alumni">("Students");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const pageSize = 10;
 
   const {
     data: profiles = [],
@@ -26,22 +29,89 @@ export default function UserManagementScreen() {
     targetProgramme: undefined,
   });
 
-  // Filter profiles based on the active tab, checking userType or falling back to user properties
-  const filteredProfiles = profiles.filter((profile: any) => {
-    // Check userType on the profile itself, or fallback to parent properties if structured differently
-    const userType = (
-      profile.userType ||
-      profile.user?.userType ||
-      profile.role ||
-      ""
-    ).toLowerCase();
+  const filteredProfiles = useMemo(() => {
+    return profiles.filter((profile: any) => {
+      const userType = (
+        profile.userType ||
+        profile.user?.userType ||
+        profile.role ||
+        profile.user?.role ||
+        profile.type ||
+        ""
+      )
+        .toLowerCase()
+        .trim();
 
-    if (activeTab === "Students") {
-      return userType.includes("student");
-    } else {
-      return userType.includes("alumni") || userType.includes(" alumnus");
+      if (activeTab === "Students") {
+        return userType.includes("student") || userType === "";
+      } else {
+        return (
+          userType.includes("alumni") ||
+          userType.includes("alumnus") ||
+          userType.includes("graduate")
+        );
+      }
+    });
+  }, [profiles, activeTab]);
+
+  const paginatedProfiles = useMemo(() => {
+    return filteredProfiles.slice(0, page * pageSize);
+  }, [filteredProfiles, page]);
+
+  const hasMore = paginatedProfiles.length < filteredProfiles.length;
+
+  const loadMoreItems = () => {
+    if (isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setPage((prev) => prev + 1);
+      setIsLoadingMore(false);
+    }, 200);
+  };
+
+  const getInitials = (
+    firstName?: string,
+    lastName?: string,
+    fallbackName?: string,
+  ) => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
     }
-  });
+    if (firstName) {
+      return firstName.substring(0, 2).toUpperCase();
+    }
+    if (fallbackName) {
+      const parts = fallbackName.trim().split(" ");
+      if (parts.length >= 2) {
+        return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+      }
+      return fallbackName.substring(0, 2).toUpperCase();
+    }
+    return "US";
+  };
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centered,
+          isDark ? styles.darkBg : styles.lightBg,
+        ]}
+      >
+        <ActivityIndicator size="large" color="#006837" />
+        <Text
+          style={[
+            styles.loadingText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Searching profiles...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
@@ -58,7 +128,10 @@ export default function UserManagementScreen() {
           placeholder="Search profiles..."
           placeholderTextColor="#9CA3AF"
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(text) => {
+            setSearch(text);
+            setPage(1);
+          }}
         />
       </View>
 
@@ -68,7 +141,10 @@ export default function UserManagementScreen() {
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => {
+              setActiveTab(tab);
+              setPage(1);
+            }}
           >
             <Text
               style={[
@@ -87,111 +163,124 @@ export default function UserManagementScreen() {
       </View>
 
       {/* Profile List */}
-      {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#006837" />
-          <Text
-            style={[
-              styles.loadingText,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Searching profiles...
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredProfiles}
-          keyExtractor={(item: any) => item.id}
-          renderItem={({ item }: { item: any }) => {
-            const fullName =
-              `${item.firstName || ""} ${item.lastName || ""}`.trim() ||
-              "Unknown User";
-            const initial = fullName.charAt(0).toUpperCase();
+      <FlatList
+        data={paginatedProfiles}
+        keyExtractor={(item: any, index) =>
+          item.id?.toString() || index.toString()
+        }
+        renderItem={({ item }: { item: any }) => {
+          const firstName = item.firstName || "";
+          const lastName = item.lastName || "";
+          const rawName = item.name || "";
+          const initials = getInitials(firstName, lastName, rawName);
 
-            return (
-              <View
-                style={[
-                  styles.userCard,
-                  isDark ? styles.darkCard : styles.lightCard,
-                ]}
-              >
-                <View style={styles.userLeft}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{initial}</Text>
-                  </View>
-                  <View style={styles.userInfoArea}>
+          return (
+            <View
+              style={[
+                styles.userCard,
+                isDark ? styles.darkCard : styles.lightCard,
+              ]}
+            >
+              <View style={styles.userLeft}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </View>
+                <View style={styles.userInfoArea}>
+                  <View style={styles.nameRow}>
                     <Text
                       style={[
                         styles.userName,
                         isDark ? styles.darkText : styles.lightText,
                       ]}
                     >
-                      {fullName}
+                      {firstName}
                     </Text>
-                    <Text style={styles.userRole}>
-                      {item.headline ||
-                        item.userType ||
-                        item.user?.userType ||
-                        activeTab}
+                    <Text
+                      style={[
+                        styles.userName,
+                        isDark ? styles.darkText : styles.lightText,
+                      ]}
+                    >
+                      {lastName}
                     </Text>
                   </View>
-                </View>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>Active</Text>
+                  <Text style={styles.userRole} numberOfLines={1}>
+                    {item.headline ||
+                      item.userType ||
+                      item.user?.userType ||
+                      item.role ||
+                      activeTab}
+                  </Text>
                 </View>
               </View>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="search-outline" size={48} color="#006837" />
+            </View>
+          );
+        }}
+        onEndReached={() => {
+          if (hasMore && !isLoadingMore) {
+            loadMoreItems();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color="#006837" />
               <Text
                 style={[
-                  styles.emptyTitle,
+                  styles.loadingMoreText,
                   isDark ? styles.darkText : styles.lightText,
                 ]}
               >
-                No Profiles Found
-              </Text>
-              <Text style={styles.emptySub}>
-                No matching {activeTab.toLowerCase()} profiles were found.
+                Loading more profiles...
               </Text>
             </View>
-          }
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
-      )}
+          ) : null
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={48} color="#006837" />
+            <Text
+              style={[
+                styles.emptyTitle,
+                isDark ? styles.darkText : styles.lightText,
+              ]}
+            >
+              No Profiles Found
+            </Text>
+            <Text style={styles.emptySub}>
+              No matching {activeTab.toLowerCase()} profiles were found.
+            </Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 40,
-  },
+  centered: { justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    height: 42,
-    borderRadius: 10,
+    height: 44,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    gap: 8,
+    paddingHorizontal: 14,
+    gap: 10,
     marginBottom: 14,
   },
   searchInput: { flex: 1, fontSize: 14 },
   tabRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   tabBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 18,
     backgroundColor: "#E5E7EB",
   },
   activeTabBtn: { backgroundColor: "#006837" },
@@ -203,32 +292,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  userLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  userLeft: { flexDirection: "row", alignItems: "center", gap: 14, flex: 1 },
   userInfoArea: { flex: 1 },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "#006837",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  avatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
+  avatarText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
   userName: { fontSize: 14, fontWeight: "700" },
-  userRole: { fontSize: 12, color: "#6B7280", marginTop: 1 },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: "#D1FAE5",
-  },
-  statusText: { fontSize: 11, fontWeight: "700", color: "#065F46" },
+  userRole: { fontSize: 12, color: "#6B7280", marginTop: 2 },
   loadingText: { marginTop: 12, fontSize: 13, fontWeight: "600" },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  loadingMoreText: { fontSize: 12, fontWeight: "600" },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
@@ -237,8 +342,17 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 16, fontWeight: "700" },
   emptySub: { fontSize: 12, color: "#9CA3AF", textAlign: "center" },
-  lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
+  lightCard: {
+    backgroundColor: "#F9FAFB",
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
+    elevation: 1,
+  },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
+  listContent: { paddingBottom: 24 },
 });

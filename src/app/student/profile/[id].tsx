@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -81,6 +81,30 @@ export interface AddCertificationDto {
   credentialId?: string;
 }
 
+// Helper to format dates like "2024-03" or "2024-03-01" into "Mar 2024"
+const formatFriendlyDate = (dateString?: string) => {
+  if (!dateString) return "";
+  try {
+    // If it's just a year or partial format like "YYYY-MM"
+    if (dateString.length === 7 && dateString.includes("-")) {
+      const [year, month] = dateString.split("-");
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      });
+    }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
+
 export default function UserProfileScreen() {
   const isDark = useColorScheme() === "dark";
   const routeParams = useLocalSearchParams<{ id?: string | string[] }>();
@@ -91,6 +115,7 @@ export default function UserProfileScreen() {
     : (routeParams.id ?? "");
 
   const router = useRouter();
+  const [isConnected, setIsConnected] = useState(false);
 
   const { data: profile, isLoading, error } = useProfileById(profileId);
 
@@ -103,6 +128,10 @@ export default function UserProfileScreen() {
         name: (profile.firstName || "") + " " + (profile.lastName || ""),
       },
     });
+  };
+
+  const handleConnectPress = () => {
+    setIsConnected(!isConnected);
   };
 
   if (isLoading) {
@@ -192,19 +221,48 @@ export default function UserProfileScreen() {
         ) : null}
         <Text style={styles.programme}>{profile.programme || "Student"}</Text>
 
-        {/* Action Button: Message */}
-        <TouchableOpacity
-          style={styles.messageButton}
-          onPress={handleMessagePress}
-        >
-          <Ionicons
-            name="chatbubble-outline"
-            size={18}
-            color="#ffffff"
-            style={styles.buttonIcon}
-          />
-          <Text style={styles.messageButtonText}>Leave a Message</Text>
-        </TouchableOpacity>
+        {/* Action Buttons Row */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[
+              styles.connectButton,
+              isConnected && styles.connectedButton,
+              isConnected && isDark && styles.darkConnectedButton,
+            ]}
+            onPress={handleConnectPress}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={isConnected ? "checkmark-outline" : "person-add-outline"}
+              size={16}
+              color={isConnected ? (isDark ? "#FFFFFF" : "#006837") : "#FFFFFF"}
+              style={styles.buttonIcon}
+            />
+            <Text
+              style={[
+                styles.connectButtonText,
+                isConnected && styles.connectedButtonText,
+                isConnected && isDark && styles.darkConnectedText,
+              ]}
+            >
+              {isConnected ? "Connected" : "Connect"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.messageButton}
+            onPress={handleMessagePress}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="chatbubble-outline"
+              size={16}
+              color="#006837"
+              style={styles.buttonIcon}
+            />
+            <Text style={styles.messageButtonText}>Message</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* About Section */}
@@ -215,14 +273,22 @@ export default function UserProfileScreen() {
             isDark ? styles.darkCard : styles.lightCard,
           ]}
         >
-          <Text
-            style={[
-              styles.sectionTitle,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            About
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color="#006837"
+              style={styles.sectionIcon}
+            />
+            <Text
+              style={[
+                styles.sectionTitle,
+                isDark ? styles.darkText : styles.lightText,
+              ]}
+            >
+              About
+            </Text>
+          </View>
           <Text
             style={[
               styles.sectionBody,
@@ -242,14 +308,22 @@ export default function UserProfileScreen() {
             isDark ? styles.darkCard : styles.lightCard,
           ]}
         >
-          <Text
-            style={[
-              styles.sectionTitle,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Skills
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons
+              name="flash-outline"
+              size={18}
+              color="#006837"
+              style={styles.sectionIcon}
+            />
+            <Text
+              style={[
+                styles.sectionTitle,
+                isDark ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Skills
+            </Text>
+          </View>
           <View style={styles.skillsContainer}>
             {profile.skills.map((skill: any, index: number) => (
               <View
@@ -281,19 +355,29 @@ export default function UserProfileScreen() {
             isDark ? styles.darkCard : styles.lightCard,
           ]}
         >
-          <Text
-            style={[
-              styles.sectionTitle,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Experience
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons
+              name="briefcase-outline"
+              size={18}
+              color="#006837"
+              style={styles.sectionIcon}
+            />
+            <Text
+              style={[
+                styles.sectionTitle,
+                isDark ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Experience
+            </Text>
+          </View>
           {profile.experiences.map((exp: any, index: number) => (
             <View
               key={index}
               style={[
                 styles.experienceItem,
+                index === profile.experiences!.length - 1 &&
+                  styles.lastExperienceItem,
                 isDark ? styles.darkBorder : styles.lightBorder,
               ]}
             >
@@ -314,8 +398,19 @@ export default function UserProfileScreen() {
                 {exp.company}
               </Text>
               <Text style={styles.expDate}>
-                {exp.startDate} - {exp.current ? "Present" : exp.endDate}
+                {formatFriendlyDate(exp.startDate)} –{" "}
+                {exp.current ? "Present" : formatFriendlyDate(exp.endDate)}
               </Text>
+              {exp.description ? (
+                <Text
+                  style={[
+                    styles.expDescription,
+                    isDark ? styles.darkMuted : styles.lightMuted,
+                  ]}
+                >
+                  {exp.description}
+                </Text>
+              ) : null}
             </View>
           ))}
         </View>
@@ -329,14 +424,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   lightContainer: {
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F4F6F8",
   },
   darkContainer: {
-    backgroundColor: "#111827",
+    backgroundColor: "#0B0F17",
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   centerContainer: {
     flex: 1,
@@ -345,88 +440,154 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   headerCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
     marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   lightCard: {
     backgroundColor: "#FFFFFF",
-    borderColor: "#E5E7EB",
+    borderColor: "#E2E8F0",
   },
   darkCard: {
-    backgroundColor: "#1F2937",
-    borderColor: "#374151",
+    backgroundColor: "#161E2E",
+    borderColor: "#2D3748",
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: "#006837",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
+    shadowColor: "#006837",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: "bold",
     color: "#FFFFFF",
+    letterSpacing: 0.5,
   },
   name: {
     fontSize: 22,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginBottom: 4,
     textAlign: "center",
+    letterSpacing: -0.3,
   },
   headline: {
     fontSize: 14,
     textAlign: "center",
-    marginBottom: 6,
+    marginBottom: 8,
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
   programme: {
     fontSize: 12,
     fontWeight: "600",
     color: "#006837",
     backgroundColor: "#E6F4EA",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  messageButton: {
+  actionRow: {
     flexDirection: "row",
-    backgroundColor: "#006837",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
+    gap: 12,
     width: "100%",
   },
+  connectButton: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#006837",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  connectedButton: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  darkConnectedButton: {
+    backgroundColor: "#1E293B",
+    borderColor: "#475569",
+  },
+  messageButton: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#006837",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   buttonIcon: {
-    marginRight: 8,
+    marginRight: 6,
+  },
+  connectButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  connectedButtonText: {
+    color: "#006837",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  darkConnectedText: {
+    color: "#E2E8F0",
   },
   messageButtonText: {
-    color: "#ffffff",
+    color: "#006837",
     fontWeight: "600",
     fontSize: 14,
   },
   sectionCard: {
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  sectionIcon: {
+    marginRight: 8,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 12,
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
   sectionBody: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   skillsContainer: {
     flexDirection: "row",
@@ -434,48 +595,62 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   skillBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   lightSkillBadge: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F1F5F9",
   },
   darkSkillBadge: {
-    backgroundColor: "#374151",
+    backgroundColor: "#1E293B",
   },
   skillText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
   },
   lightSkillText: {
-    color: "#374151",
+    color: "#334155",
   },
   darkSkillText: {
-    color: "#D1D5DB",
+    color: "#CBD5E1",
   },
   experienceItem: {
-    marginBottom: 12,
+    marginBottom: 16,
     borderBottomWidth: 1,
-    paddingBottom: 12,
+    paddingBottom: 16,
+  },
+  lastExperienceItem: {
+    marginBottom: 0,
+    borderBottomWidth: 0,
+    paddingBottom: 0,
   },
   lightBorder: {
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "#F1F5F9",
   },
   darkBorder: {
-    borderBottomColor: "#374151",
+    borderBottomColor: "#2D3748",
   },
   expTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
+    marginBottom: 2,
   },
   expCompany: {
     fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 4,
   },
   expDate: {
     fontSize: 12,
-    color: "#9CA3AF",
-    marginTop: 2,
+    color: "#94A3B8",
+    fontWeight: "500",
+    marginBottom: 6,
+  },
+  expDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
   errorText: {
     fontSize: 16,
@@ -484,34 +659,34 @@ const styles = StyleSheet.create({
   },
   backButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
   lightBackButton: {
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#E2E8F0",
   },
   darkBackButton: {
-    backgroundColor: "#374151",
+    backgroundColor: "#334155",
   },
   backButtonText: {
     fontWeight: "600",
   },
   lightBackText: {
-    color: "#374151",
+    color: "#334155",
   },
   darkBackText: {
     color: "#FFFFFF",
   },
   lightText: {
-    color: "#111827",
+    color: "#0F172A",
   },
   darkText: {
-    color: "#FFFFFF",
+    color: "#F8FAFC",
   },
   lightMuted: {
-    color: "#6B7280",
+    color: "#64748B",
   },
   darkMuted: {
-    color: "#9CA3AF",
+    color: "#94A3B8",
   },
 });

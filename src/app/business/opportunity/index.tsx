@@ -1,4 +1,4 @@
-import { useGetMyPostings } from "@/api/hooks/useOpportunity";
+import { useGetMyPostings, useCloseOpportunity } from "@/api/hooks/useOpportunity";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   RefreshControl,
   SafeAreaView,
   StyleSheet,
@@ -20,7 +21,7 @@ interface Opportunity {
   title: string;
   description: string;
   targetProgramme?: string;
-  status?: string;
+  status?: string | number;
   createdAtUtc: string;
 }
 
@@ -28,11 +29,10 @@ export default function MyPostingsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
 
-  // Fetch only my postings using the requested hook
   const myQuery = useGetMyPostings();
+  const { mutate: closeOpportunity } = useCloseOpportunity();
   const rawData = myQuery.data;
 
-  // Safely normalize data to an array whether the backend returns an array or a single object
   const currentData: Opportunity[] = Array.isArray(rawData)
     ? rawData
     : rawData
@@ -44,44 +44,90 @@ export default function MyPostingsScreen() {
   const error = myQuery.error;
   const refetch = myQuery.refetch;
 
-  // State to track loading/processing per item when closing
   const [closingId, setClosingId] = useState<string | null>(null);
 
-  const handleClosePosting = async (id: string, title: string) => {
-    Alert.alert("Close Posting", `Are you sure you want to close "${title}"?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Close Posting",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            setClosingId(id);
-            await fetch(`/api/opportunities/${id}/close`, { method: "POST" });
-            refetch();
-          } catch (err) {
-            Alert.alert(
-              "Error",
-              "Failed to close the posting. Please try again.",
-            );
-          } finally {
-            setClosingId(null);
-          }
-        },
+  const getStatusInfo = (status: string | number | undefined) => {
+    const s = typeof status === "string" ? status.toLowerCase() : status;
+
+    if (s === 2 || s === "pendingapproval" || s === "pending") {
+      return { label: "Pending", isPending: true };
+    }
+    if (s === 1 || s === "draft") {
+      return { label: "Draft", isPending: true };
+    }
+    if (s === 4 || s === "closed") {
+      return { label: "Closed", isPending: false };
+    }
+    if (s === 5 || s === "rejected") {
+      return { label: "Rejected", isPending: false };
+    }
+    return { label: "Published", isPending: false };
+  };
+
+  const executeClose = (id: string) => {
+    console.log("Triggering mutation hook for ID:", id);
+    setClosingId(id);
+    closeOpportunity(id, {
+      onSuccess: () => {
+        console.log("Mutation successful!");
+        setClosingId(null);
+        refetch();
+        if (Platform.OS !== "web") {
+          Alert.alert("Success", "Posting closed successfully.");
+        }
       },
-    ]);
+      onError: (err: any) => {
+        console.log("Mutation failed:", err?.response?.data || err.message);
+        setClosingId(null);
+        const errorMsg =
+          err?.response?.data?.message ||
+          "Failed to close the posting. Please try again.";
+        if (Platform.OS === "web") {
+          window.alert(errorMsg);
+        } else {
+          Alert.alert("Error", errorMsg);
+        }
+      },
+    });
+  };
+
+  const handleClosePosting = (id: string, title: string) => {
+    console.log("Close button pressed for opportunity ID:", id);
+
+    if (Platform.OS === "web") {
+      // Use standard web confirmation dialog
+      const confirmed = window.confirm(
+        `Are you sure you want to close "${title}"?`,
+      );
+      if (confirmed) {
+        executeClose(id);
+      }
+    } else {
+      // Use native mobile alert
+      Alert.alert(
+        "Close Posting",
+        `Are you sure you want to close "${title}"?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Close Posting",
+            style: "destructive",
+            onPress: () => executeClose(id),
+          },
+        ],
+      );
+    }
   };
 
   const renderItem = ({ item }: { item: Opportunity }) => {
-    const status = item.status?.toLowerCase() || "published";
-    const isPending = status === "pending" || status === "draft";
+    const { label, isPending } = getStatusInfo(item.status);
     const isClosing = closingId === item.id;
 
     return (
       <View style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}>
-        {/* Clickable Card Body navigating to student/applicants/[id] */}
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => router.push(`/student/applicants/${item.id}` as any)}
+          onPress={() => router.push(`/buiness/applicants/${item.id}` as any)}
         >
           <View style={styles.cardHeader}>
             <Text
@@ -105,7 +151,7 @@ export default function MyPostingsScreen() {
                   isPending ? styles.textPending : styles.textPublished,
                 ]}
               >
-                {isPending ? "Pending" : "Published"}
+                {label}
               </Text>
             </View>
           </View>
@@ -151,7 +197,6 @@ export default function MyPostingsScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Close Posting Action Button */}
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[
@@ -160,6 +205,7 @@ export default function MyPostingsScreen() {
             ]}
             onPress={() => handleClosePosting(item.id, item.title)}
             disabled={isClosing}
+            activeOpacity={0.6}
           >
             {isClosing ? (
               <ActivityIndicator size="small" color="#EF4444" />
@@ -247,14 +293,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#9CA3AF",
-    textTransform: "uppercase",
-    marginTop: 20,
-    marginBottom: 16,
-  },
   listContainer: {
     paddingBottom: 32,
   },

@@ -60,32 +60,57 @@ export default function AdminAnalyticsScreen() {
     ).start();
   }, []);
 
-  // Fallback mock data if query is still loading or fails
-  const data = apiData || {
-    totalUsers: 1248,
-    totalStudents: 980,
-    totalBusinesses: 240,
-    totalAdmins: 28,
-    totalOpportunities: 342,
-    publishedOpportunities: 210,
-    pendingOpportunities: 82,
-    closedOpportunities: 50,
-    totalJobApplications: 1850,
-    totalPosts: 540,
-    totalComments: 1280,
-    totalLikes: 3420,
-    totalConnections: 1256,
-    totalDirectMessages: 4782,
-    pendingBusinessVerifications: 14,
-    recentRegistrations: [
-      { date: "2026-09-01", count: 12 },
-      { date: "2026-09-02", count: 19 },
-      { date: "2026-09-03", count: 15 },
-      { date: "2026-09-04", count: 28 },
-      { date: "2026-09-05", count: 22 },
-      { date: "2026-09-06", count: 35 },
-    ],
-  };
+  if (isLoading || !apiData) {
+    return (
+      <View
+        style={[
+          styles.container,
+          isDark ? styles.darkBg : styles.lightBg,
+          styles.centerState,
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.pulseDot,
+            { opacity: pulseAnim, transform: [{ scale: 1.5 }] },
+          ]}
+        />
+        <Text
+          style={[
+            styles.stateText,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Loading live telemetry...
+        </Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View
+        style={[
+          styles.container,
+          isDark ? styles.darkBg : styles.lightBg,
+          styles.centerState,
+        ]}
+      >
+        <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+        <Text
+          style={[
+            styles.stateText,
+            isDark ? styles.darkText : styles.lightText,
+            { marginTop: 12 },
+          ]}
+        >
+          Failed to fetch analytics from API server.
+        </Text>
+      </View>
+    );
+  }
+
+  const data = apiData;
 
   // --- Graph 1 Helper: Line Chart Path for Registrations ---
   const regList = data.recentRegistrations || [];
@@ -144,9 +169,7 @@ export default function AdminAnalyticsScreen() {
             <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
             <Text style={styles.hudBadgeText}>TELEMETRY ACTIVE</Text>
           </View>
-          <Text style={styles.hudVersion}>
-            {isLoading ? "SYNCING..." : isError ? "OFFLINE CACHE" : "LIVE FEED"}
-          </Text>
+          <Text style={styles.hudVersion}>LIVE API FEED</Text>
         </View>
 
         {/* 1. Daily Registrations Line Chart */}
@@ -194,7 +217,7 @@ export default function AdminAnalyticsScreen() {
           <View style={styles.xLabels}>
             {regList.map((r, i) => (
               <Text key={i} style={styles.chartLabel}>
-                {r.date ? r.date.substring(8, 10) + " Sep" : ""}
+                {r.date ? r.date.substring(5, 10) : ""}
               </Text>
             ))}
           </View>
@@ -459,6 +482,16 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   lightBg: { backgroundColor: "#F8FAFC" },
   darkBg: { backgroundColor: "#0B0F17" },
+  centerState: {
+    justifyContent: "center",
+    alignItems: "center",
+    flex: 1,
+  },
+  stateText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   hudBar: {
     flexDirection: "row",

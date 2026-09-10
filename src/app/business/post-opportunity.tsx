@@ -23,20 +23,18 @@ export default function PostOpportunityScreen({
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
-  const [jobTitle, setJobTitle] = useState("Flutter Developer Intern");
-  const [jobType, setJobType] = useState("Internship");
-  const [location, setLocation] = useState("Cape Town, South Africa");
+  const [title, setTitle] = useState("Flutter Developer Intern");
   const [description, setDescription] = useState(
     "We're looking for a passionate Flutter developer intern to join our mobile team...",
   );
-  const [requirements, setRequirements] = useState(
-    "• Basic knowledge of Flutter\n• Dart programming\n• Strong problem solving skills",
+  const [targetProgramme, setTargetProgramme] = useState(
+    "Software Engineering Bootcamp",
   );
 
   const { mutate: createOpportunity, isPending } = useCreateOpportunity();
 
   const handlePublish = () => {
-    if (!jobTitle || !jobType || !location || !description) {
+    if (!title || !description || !targetProgramme) {
       Alert.alert("Error", "Please fill in all required fields.");
       return;
     }
@@ -44,6 +42,9 @@ export default function PostOpportunityScreen({
     createOpportunity(
       {
         businessProfileId: businessId,
+        Title: title,
+        Description: description,
+        TargetProgramme: targetProgramme,
       } as any,
       {
         onSuccess: () => {
@@ -68,23 +69,9 @@ export default function PostOpportunityScreen({
     >
       <Text style={styles.label}>Job Title</Text>
       <ThemedInput
-        value={jobTitle}
-        onChangeText={setJobTitle}
+        value={title}
+        onChangeText={setTitle}
         placeholder="e.g. .NET Developer"
-      />
-
-      <Text style={styles.label}>Job Type</Text>
-      <ThemedInput
-        value={jobType}
-        onChangeText={setJobType}
-        placeholder="e.g. Internship, Full-time"
-      />
-
-      <Text style={styles.label}>Location</Text>
-      <ThemedInput
-        value={location}
-        onChangeText={setLocation}
-        placeholder="e.g. Cape Town, Remote"
       />
 
       <Text style={styles.label}>Description</Text>
@@ -94,15 +81,14 @@ export default function PostOpportunityScreen({
         multiline
         numberOfLines={4}
         style={styles.textArea}
+        placeholder="Enter long description..."
       />
 
-      <Text style={styles.label}>Requirements</Text>
+      <Text style={styles.label}>Target Program</Text>
       <ThemedInput
-        value={requirements}
-        onChangeText={setRequirements}
-        multiline
-        numberOfLines={4}
-        style={styles.textArea}
+        value={targetProgramme}
+        onChangeText={setTargetProgramme}
+        placeholder="e.g. Software Engineering Bootcamp"
       />
 
       <TouchableOpacity

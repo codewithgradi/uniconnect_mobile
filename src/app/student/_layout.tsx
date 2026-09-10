@@ -25,6 +25,10 @@ export default function StudentStackLayout() {
         options={{ title: "Opportunity Details", headerBackTitle: "Back" }}
       />
       <Stack.Screen
+        name="profile/[id]"
+        options={{ title: "Profile Info", headerBackTitle: "Back" }}
+      />
+      <Stack.Screen
         name="messages/[id]"
         options={{ title: "Chat", headerBackTitle: "Back" }}
       />

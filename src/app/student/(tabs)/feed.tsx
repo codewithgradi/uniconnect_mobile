@@ -56,7 +56,8 @@ export default function FeedScreen() {
     }
   };
 
-  const handleLikePost = async (postId: string) => {
+  const handleLikePost = async (postId: string, isCurrentlyLiked: boolean) => {
+    if (isCurrentlyLiked) return; // Do not like again or make API request if already liked
     try {
       await toggleLike(postId);
     } catch (error) {
@@ -75,7 +76,6 @@ export default function FeedScreen() {
     }
   };
 
-  // Theme matching the headerTintColor / tab bar setup
   const theme = {
     bg: isDark ? "#111827" : "#006837",
     cardBg: isDark ? "#1F2937" : "#FFF",
@@ -153,7 +153,7 @@ export default function FeedScreen() {
               <TouchableOpacity
                 style={[
                   styles.postButton,
-                  { backgroundColor: isDark ? "#006837" : "#006837" },
+                  { backgroundColor: "#006837" },
                   (!postContent.trim() || isCreatingPost) &&
                     styles.postButtonDisabled,
                 ]}
@@ -169,140 +169,151 @@ export default function FeedScreen() {
             </View>
           </View>
         }
-        renderItem={({ item: post }) => (
-          <View
-            style={[
-              styles.postCard,
-              {
-                backgroundColor: theme.cardBg,
-                borderBottomColor: theme.border,
-              },
-            ]}
-          >
-            {/* Author Info */}
-            <View style={styles.postHeader}>
-              <View
-                style={[
-                  styles.avatarPlaceholder,
-                  { backgroundColor: isDark ? "#006837" : "#006837" },
-                ]}
-              >
-                <Text style={styles.avatarText}>{post.author.charAt(0)}</Text>
-              </View>
-              <View style={styles.authorMeta}>
-                <Text style={[styles.authorName, { color: theme.text }]}>
-                  {post.author}
-                </Text>
-                <Text style={[styles.authorHandle, { color: theme.subText }]}>
-                  {post.handle} • {post.createdAt}
-                </Text>
-              </View>
-            </View>
+        renderItem={({ item: post }) => {
+          const fullName = `${post.firstname} ${post.lastname}`.trim();
+          const displayName =
+            fullName.length > 0 ? fullName : post.userEmail || "Unknown User";
+          const avatarLetter = displayName.charAt(0).toUpperCase();
 
-            {/* Post Content */}
-            <Text style={[styles.postContent, { color: theme.text }]}>
-              {post.content}
-            </Text>
-
-            {/* Post Actions (Like / Comment Count) */}
-            <View style={[styles.postFooter, { borderTopColor: theme.border }]}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                activeOpacity={0.7}
-                onPress={() => handleLikePost(post.id)}
-              >
-                <Ionicons
-                  name={post.isLiked ? "heart" : "heart-outline"}
-                  size={20}
-                  color={post.isLiked ? "#E0245E" : theme.subText}
-                />
-                <Text
+          return (
+            <View
+              style={[
+                styles.postCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderBottomColor: theme.border,
+                },
+              ]}
+            >
+              {/* Author Info */}
+              <View style={styles.postHeader}>
+                <View
                   style={[
-                    styles.actionText,
-                    { color: theme.subText },
-                    post.isLiked && styles.activeActionText,
-                  ]}
-                >
-                  {post.likes}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                activeOpacity={0.7}
-                onPress={() =>
-                  setActiveCommentPostId(
-                    activeCommentPostId === post.id ? null : post.id,
-                  )
-                }
-              >
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={18}
-                  color={theme.subText}
-                />
-                <Text style={[styles.actionText, { color: theme.subText }]}>
-                  {post.comments.length}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Comments Section */}
-            {post.comments.length > 0 && (
-              <View
-                style={[
-                  styles.commentsContainer,
-                  { backgroundColor: theme.commentBg },
-                ]}
-              >
-                {post.comments.map((comment) => (
-                  <View key={comment.id} style={styles.commentItem}>
-                    <Text style={[styles.commentAuthor, { color: theme.text }]}>
-                      {comment.author}{" "}
-                      <Text
-                        style={[
-                          styles.commentContent,
-                          { color: isDark ? "#D1D5DB" : "#444" },
-                        ]}
-                      >
-                        {comment.content}
-                      </Text>
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Comment Input Drawer (Conditional) */}
-            {activeCommentPostId === post.id && (
-              <View style={styles.commentComposer}>
-                <TextInput
-                  style={[
-                    styles.commentInput,
-                    {
-                      backgroundColor: theme.inputBg,
-                      color: theme.text,
-                    },
-                  ]}
-                  placeholder="Write a comment..."
-                  placeholderTextColor={isDark ? "#9CA3AF" : "#888"}
-                  value={commentText}
-                  onChangeText={setCommentText}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.commentSendButton,
+                    styles.avatarPlaceholder,
                     { backgroundColor: "#006837" },
                   ]}
-                  activeOpacity={0.7}
-                  onPress={() => handleAddComment(post.id)}
                 >
-                  <Ionicons name="send" size={16} color="#FFF" />
+                  <Text style={styles.avatarText}>{avatarLetter}</Text>
+                </View>
+                <View style={styles.authorMeta}>
+                  <Text style={[styles.authorName, { color: theme.text }]}>
+                    {displayName}
+                  </Text>
+                  <Text style={[styles.authorHandle, { color: theme.subText }]}>
+                    {post.userEmail} • {post.createdAt}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Post Content */}
+              <Text style={[styles.postContent, { color: theme.text }]}>
+                {post.content}
+              </Text>
+
+              {/* Post Actions (Like Count / Comment Count from DTO) */}
+              <View
+                style={[styles.postFooter, { borderTopColor: theme.border }]}
+              >
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  activeOpacity={0.7}
+                  onPress={() => handleLikePost(post.id, post.isLiked)}
+                >
+                  <Ionicons
+                    name={post.isLiked ? "heart" : "heart-outline"}
+                    size={20}
+                    color={post.isLiked ? "#E0245E" : theme.subText}
+                  />
+                  <Text
+                    style={[
+                      styles.actionText,
+                      { color: theme.subText },
+                      post.isLiked && styles.activeActionText,
+                    ]}
+                  >
+                    {post.likeCount}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    setActiveCommentPostId(
+                      activeCommentPostId === post.id ? null : post.id,
+                    )
+                  }
+                >
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={18}
+                    color={theme.subText}
+                  />
+                  <Text style={[styles.actionText, { color: theme.subText }]}>
+                    {post.commentCount}
+                  </Text>
                 </TouchableOpacity>
               </View>
-            )}
-          </View>
-        )}
+
+              {/* Comments Section (Rendered if populated via separate state/DTO expansion if available) */}
+              {post.comments && post.comments.length > 0 && (
+                <View
+                  style={[
+                    styles.commentsContainer,
+                    { backgroundColor: theme.commentBg },
+                  ]}
+                >
+                  {post.comments.map((comment: any) => (
+                    <View key={comment.id} style={styles.commentItem}>
+                      <Text
+                        style={[styles.commentAuthor, { color: theme.text }]}
+                      >
+                        {comment.author}{" "}
+                        <Text
+                          style={[
+                            styles.commentContent,
+                            { color: isDark ? "#D1D5DB" : "#444" },
+                          ]}
+                        >
+                          {comment.content}
+                        </Text>
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Comment Input Drawer */}
+              {activeCommentPostId === post.id && (
+                <View style={styles.commentComposer}>
+                  <TextInput
+                    style={[
+                      styles.commentInput,
+                      {
+                        backgroundColor: theme.inputBg,
+                        color: theme.text,
+                      },
+                    ]}
+                    placeholder="Write a comment..."
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#888"}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.commentSendButton,
+                      { backgroundColor: "#006837" },
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => handleAddComment(post.id)}
+                  >
+                    <Ionicons name="send" size={16} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        }}
         ListFooterComponent={
           isFetchingNextPage ? (
             <View style={styles.footerLoader}>

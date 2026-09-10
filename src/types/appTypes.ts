@@ -169,6 +169,10 @@ export interface PostDto {
   createdAt: string;
   commentCount: number;
   likeCount: number;
+  firstName: string;
+  lastName: string;
+  userEmail: string;
+  isLiked: boolean
 }
 
 // --- DIRECT MESSAGING ---

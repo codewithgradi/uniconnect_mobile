@@ -83,15 +83,15 @@ export const opportunitiesApi = {
   },
 
   approve: async (opportunityId: string): Promise<void> => {
-    await api.put(`/opportunities/${opportunityId}/approve`);
+    await api.patch(`/opportunities/${opportunityId}/approve`);
   },
 
   reject: async (opportunityId: string): Promise<void> => {
-    await api.put(`/opportunities/${opportunityId}/reject`);
+    await api.patch(`/opportunities/${opportunityId}/reject`);
   },
 
   close: async (opportunityId: string): Promise<void> => {
-    await api.put(`/opportunities/${opportunityId}/close`);
+    await api.patch(`/opportunities/${opportunityId}/close`);
   },
 };
 

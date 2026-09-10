@@ -8,10 +8,20 @@ import {
   useColorScheme,
   View,
 } from "react-native";
+import { useLogout } from "@/api/hooks/useAuth";
 
 export default function StudentHomeScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
+
+  const handleLogout = () => {
+    logout(undefined, {
+      onSuccess: () => {
+        router.replace("/");
+      },
+    });
+  };
 
   const quickActions = [
     { title: "Events", icon: "calendar-outline", route: "/student/events" },
@@ -41,13 +51,26 @@ export default function StudentHomeScreen() {
           </Text>
           <Text style={styles.subGreeting}>Ready to learn and grow?</Text>
         </View>
-        <TouchableOpacity
-          style={styles.profileAvatar}
-          onPress={() => router.push("/student/profile")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.avatarText}>UC</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[
+              styles.logoutButton,
+              isDark ? styles.darkLogoutBtn : styles.lightLogoutBtn,
+            ]}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.profileAvatar}
+            onPress={() => router.push("/student/profile")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.avatarText}>UC</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Quick Access */}
@@ -128,6 +151,27 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 4,
     fontWeight: "500",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  logoutButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  lightLogoutBtn: {
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  darkLogoutBtn: {
+    borderColor: "#374151",
+    backgroundColor: "#1F2937",
   },
   profileAvatar: {
     width: 46,

@@ -6,6 +6,9 @@ import { jwtDecode } from "jwt-decode";
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,18 +29,15 @@ export default function LoginScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
-  // Logs immediately when the component mounts so you can verify the URL in your terminal
-
-  // Params are optional (only populated if redirected right after registration)
   const params = useLocalSearchParams<{
     email?: string;
-    password?:string;
+    password?: string;
     userType?: string;
     role?: string;
   }>();
 
   const [email, setEmail] = useState(params.email || "");
-  const [password, setPassword] = useState(params.password||"");
+  const [password, setPassword] = useState(params.password || "");
   const [showPassword, setShowPassword] = useState(false);
 
   const { mutate: login, isPending, error } = useLogin();
@@ -68,6 +68,7 @@ export default function LoginScreen() {
   };
 
   const handleLogin = () => {
+    if (isPending) return;
 
     const cleanEmail = email.trim().toLowerCase();
 
@@ -75,6 +76,7 @@ export default function LoginScreen() {
       Alert.alert("Validation Error", "Please enter both email and password.");
       return;
     }
+
     login(
       { email: cleanEmail, password },
       {
@@ -121,104 +123,125 @@ export default function LoginScreen() {
           const message =
             err?.response?.data?.detail ||
             err?.response?.data?.message ||
+            err?.message ||
             "Invalid email or password. Please try again.";
-          Alert.alert("Login Failed", message);
+
+          setTimeout(() => {
+            Alert.alert("Login Failed", message);
+          }, 100);
         },
       },
     );
   };
 
   return (
-    <View style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}>
-      <View style={styles.header}>
-        <Text
-          style={[styles.title, isDark ? styles.darkText : styles.lightText]}
-        >
-          Welcome Back
-        </Text>
-        <Text style={styles.subtitle}>
-          Sign in to access your UniConnect portal
-        </Text>
-      </View>
-
-      <View style={styles.form}>
-        <ThemedInput
-          placeholder="Email Address"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-        />
-
-        <View style={styles.passwordWrapper}>
-          <View style={styles.passwordInputContainer}>
-            <ThemedInput
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoComplete="password"
-              textContentType="password"
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.eyeToggleBtn}
-            onPress={() => setShowPassword(!showPassword)}
+    <KeyboardAvoidingView
+      style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <Text
+            style={[styles.title, isDark ? styles.darkText : styles.lightText]}
           >
-            <Text style={styles.eyeToggleText}>
-              {showPassword ? "Hide" : "Show"}
-            </Text>
-          </TouchableOpacity>
+            Welcome Back
+          </Text>
+          <Text style={styles.subtitle}>
+            Sign in to access your UniConnect portal
+          </Text>
         </View>
 
-        {error && (
-          <Text style={styles.errorText}>
-            {(error as any)?.response?.data?.title ||
-              (error as any)?.response?.data?.detail ||
-              "Invalid login credentials."}
+        <View style={styles.form}>
+          <ThemedInput
+            placeholder="Email Address"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+
+          <View style={styles.passwordWrapper}>
+            <View style={styles.passwordInputContainer}>
+              <ThemedInput
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoComplete="password"
+                textContentType="password"
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.eyeToggleBtn}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Text style={styles.eyeToggleText}>
+                {showPassword ? "Hide" : "Show"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {error && (
+            <Text style={styles.errorText}>
+              {(error as any)?.response?.data?.title ||
+                (error as any)?.response?.data?.detail ||
+                "Invalid login credentials."}
+            </Text>
+          )}
+
+          <ThemedButtonPrimary
+            title={isPending ? "Signing In..." : "Sign In"}
+            onPress={handleLogin}
+            disabled={isPending}
+            style={{ marginTop: 24 }}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.footerLink}
+          onPress={() => router.push("/(auth)/role")}
+        >
+          <Text style={styles.footerText}>
+            Don't have an account? <Text style={styles.linkText}>Register</Text>
           </Text>
-        )}
-
-        <ThemedButtonPrimary
-          title={isPending ? "Signing In..." : "Sign In"}
-          onPress={handleLogin}
-          disabled={isPending}
-          style={{ marginTop: 24 }}
-        />
-      </View>
-
-      <TouchableOpacity
-        style={styles.footerLink}
-        onPress={() => router.push("/(auth)/role")}
-      >
-        <Text style={styles.footerText}>
-          Don't have an account? <Text style={styles.linkText}>Register</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: "space-between",
-    paddingVertical: 48,
+    paddingTop: 60,
+    paddingBottom: 36,
   },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  header: { marginTop: 24 },
+  header: { marginBottom: 20 },
   title: { fontSize: 28, fontWeight: "700" },
   subtitle: { fontSize: 15, color: "#6B7280", marginTop: 8 },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
-  form: { flex: 1, justifyContent: "center" },
+  form: {
+    marginVertical: 20,
+    justifyContent: "center",
+  },
   passwordWrapper: {
     position: "relative",
     justifyContent: "center",
+    marginTop: 12,
   },
   passwordInputContainer: {
     width: "100%",
@@ -235,7 +258,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  footerLink: { alignItems: "center" },
+  footerLink: { alignItems: "center", marginTop: 20 },
   footerText: { color: "#6B7280", fontSize: 14 },
   linkText: { color: "#006837", fontWeight: "600" },
   errorText: { color: "#EF4444", marginTop: 8, fontSize: 14 },

@@ -21,7 +21,7 @@ export default function AdminTabsLayout() {
         tabBarStyle: {
           backgroundColor: isDark ? "#111827" : "#FFFFFF",
           borderTopColor: isDark ? "#374151" : "#E5E7EB",
-          height: 90,
+          height: 120,
           paddingBottom: 8,
           paddingTop: 8,
         },

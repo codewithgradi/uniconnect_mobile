@@ -14,6 +14,11 @@ export const profilesApi = {
     const response = await api.get("/profiles/me");
     return response.data;
   },
+  getAllProfile: async (): Promise<ProfileDto> => {
+    const response = await api.get("/profiles");
+    console.log(response.data)
+    return response.data;
+  },
 
   getProfileById: async (profileId: string): Promise<ProfileDto> => {
     const response = await api.get(`/profiles/${profileId}`);
