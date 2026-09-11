@@ -18,6 +18,10 @@ export default function StudentStackLayout() {
     >
       {/* Bottom Tabs Group */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="messages"
+        options={{ headerShown: true, title: "Conversations" }}
+      />
 
       {/* Detail / Modal Sub-screens (Stack layer hides tab bar automatically) */}
       <Stack.Screen
@@ -30,7 +34,7 @@ export default function StudentStackLayout() {
       />
       <Stack.Screen
         name="messages/[id]"
-        options={{ title: "Chat", headerBackTitle: "Back" }}
+        options={{ title: "Chat", headerShown:false }}
       />
       <Stack.Screen name="events" options={{ title: "Events" }} />
       <Stack.Screen name="notifications" options={{ title: "Notifications" }} />

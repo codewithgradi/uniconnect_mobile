@@ -38,8 +38,10 @@ export default function RegisterScreen() {
   const { mutate: register, isPending: isRegistering } = useRegister();
   const { mutate: sendOtp, isPending: isSendingOtp } = useSendOtp();
 
-  const isAcademicRole = userType === "student" || userType === "alumni";
+  const isStudent = userType === "student";
+  const isAlumni = userType === "alumni";
   const isBusinessRole = userType === "business";
+  const isAcademicRole = isStudent || isAlumni;
   const isLoading = isRegistering || isSendingOtp;
 
   const showNotification = (title: string, message: string) => {
@@ -67,17 +69,14 @@ export default function RegisterScreen() {
       userType: formattedUserType,
       firstName: isAcademicRole ? formData.firstName : undefined,
       lastName: isAcademicRole ? formData.lastName : undefined,
-      programme: isAcademicRole ? formData.programme : undefined,
-      studentNumber: isAcademicRole ? formData.studentNumber : undefined,
+      programme: isStudent ? formData.programme : undefined,
+      studentNumber: isStudent ? formData.studentNumber : undefined,
       companyName: isBusinessRole ? formData.companyName : undefined,
     };
 
     register(payload, {
-      onSuccess: (data) => {
-        const requiresVerification =
-          userType === "student" || userType === "alumni";
-
-        if (requiresVerification) {
+      onSuccess: () => {
+        if (isStudent) {
           sendOtp(
             { email: formData.email },
             {
@@ -102,7 +101,9 @@ export default function RegisterScreen() {
         } else {
           showNotification(
             "Registration Successful",
-            "Your business account has been created successfully.",
+            isAlumni
+              ? "Your alumni account has been created successfully."
+              : "Your business account has been created successfully.",
           );
           router.replace({
             pathname: "/(auth)/login",
@@ -189,6 +190,11 @@ export default function RegisterScreen() {
                 value={formData.lastName}
                 onChangeText={(v) => setFormData({ ...formData, lastName: v })}
               />
+            </>
+          )}
+
+          {isStudent && (
+            <>
               <ThemedInput
                 placeholder="Student Number"
                 value={formData.studentNumber}

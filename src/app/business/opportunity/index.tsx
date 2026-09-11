@@ -1,4 +1,7 @@
-import { useGetMyPostings, useCloseOpportunity } from "@/api/hooks/useOpportunity";
+import {
+  useGetMyPostings,
+  useCloseOpportunity,
+} from "@/api/hooks/useOpportunity";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -50,18 +53,18 @@ export default function MyPostingsScreen() {
     const s = typeof status === "string" ? status.toLowerCase() : status;
 
     if (s === 2 || s === "pendingapproval" || s === "pending") {
-      return { label: "Pending", isPending: true };
+      return { label: "PENDING_SYNC", isPending: true };
     }
     if (s === 1 || s === "draft") {
-      return { label: "Draft", isPending: true };
+      return { label: "STAGED_DRAFT", isPending: true };
     }
     if (s === 4 || s === "closed") {
-      return { label: "Closed", isPending: false };
+      return { label: "OFFLINE", isPending: false };
     }
     if (s === 5 || s === "rejected") {
-      return { label: "Rejected", isPending: false };
+      return { label: "TERMINATED", isPending: false };
     }
-    return { label: "Published", isPending: false };
+    return { label: "ONLINE", isPending: false };
   };
 
   const executeClose = (id: string) => {
@@ -73,7 +76,7 @@ export default function MyPostingsScreen() {
         setClosingId(null);
         refetch();
         if (Platform.OS !== "web") {
-          Alert.alert("Success", "Posting closed successfully.");
+          Alert.alert("Success", "Node disconnected successfully.");
         }
       },
       onError: (err: any) => {
@@ -81,11 +84,11 @@ export default function MyPostingsScreen() {
         setClosingId(null);
         const errorMsg =
           err?.response?.data?.message ||
-          "Failed to close the posting. Please try again.";
+          "Failed to disconnect node. Please try again.";
         if (Platform.OS === "web") {
           window.alert(errorMsg);
         } else {
-          Alert.alert("Error", errorMsg);
+          Alert.alert("Telemetry Error", errorMsg);
         }
       },
     });
@@ -95,22 +98,20 @@ export default function MyPostingsScreen() {
     console.log("Close button pressed for opportunity ID:", id);
 
     if (Platform.OS === "web") {
-      // Use standard web confirmation dialog
       const confirmed = window.confirm(
-        `Are you sure you want to close "${title}"?`,
+        `Are you sure you want to disconnect network node "${title}"?`,
       );
       if (confirmed) {
         executeClose(id);
       }
     } else {
-      // Use native mobile alert
       Alert.alert(
-        "Close Posting",
-        `Are you sure you want to close "${title}"?`,
+        "Disconnect Node",
+        `Are you sure you want to disconnect network node "${title}"?`,
         [
-          { text: "Cancel", style: "cancel" },
+          { text: "Abort", style: "cancel" },
           {
-            text: "Close Posting",
+            text: "Disconnect",
             style: "destructive",
             onPress: () => executeClose(id),
           },
@@ -127,7 +128,7 @@ export default function MyPostingsScreen() {
       <View style={[styles.card, isDark ? styles.darkCard : styles.lightCard]}>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => router.push(`/buiness/applicants/${item.id}` as any)}
+          onPress={() => router.push(`/business/applicant/${item.id}` as any)}
         >
           <View style={styles.cardHeader}>
             <Text
@@ -158,7 +159,9 @@ export default function MyPostingsScreen() {
 
           {item.targetProgramme ? (
             <View style={styles.programmeContainer}>
-              <Text style={styles.programmeText}>{item.targetProgramme}</Text>
+              <Text style={styles.programmeText}>
+                // {item.targetProgramme}
+              </Text>
             </View>
           ) : null}
 
@@ -175,9 +178,9 @@ export default function MyPostingsScreen() {
           <View style={styles.cardFooterInfo}>
             <View style={styles.footerItem}>
               <Ionicons
-                name="time-outline"
+                name="pulse-outline"
                 size={14}
-                color={isDark ? "#9CA3AF" : "#6B7280"}
+                color={isDark ? "#00E5FF" : "#0284C7"}
               />
               <Text
                 style={[
@@ -186,13 +189,13 @@ export default function MyPostingsScreen() {
                 ]}
               >
                 {" "}
-                Posted: {new Date(item.createdAtUtc).toLocaleDateString()}
+                INITIALIZED: {new Date(item.createdAtUtc).toLocaleDateString()}
               </Text>
             </View>
             <Ionicons
               name="chevron-forward"
               size={16}
-              color={isDark ? "#4B5563" : "#9CA3AF"}
+              color={isDark ? "#00FF66" : "#006837"}
             />
           </View>
         </TouchableOpacity>
@@ -208,16 +211,16 @@ export default function MyPostingsScreen() {
             activeOpacity={0.6}
           >
             {isClosing ? (
-              <ActivityIndicator size="small" color="#EF4444" />
+              <ActivityIndicator size="small" color="#FF3366" />
             ) : (
               <>
                 <Ionicons
-                  name="close-circle-outline"
-                  size={16}
-                  color="#EF4444"
+                  name="radio-button-off-outline"
+                  size={14}
+                  color="#FF3366"
                   style={{ marginRight: 6 }}
                 />
-                <Text style={styles.closeButtonText}>Close Posting</Text>
+                <Text style={styles.closeButtonText}>DISCONNECT NODE</Text>
               </>
             )}
           </TouchableOpacity>
@@ -232,23 +235,37 @@ export default function MyPostingsScreen() {
     >
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#006837" />
+          <ActivityIndicator size="large" color="#00FF66" />
+          <Text
+            style={[
+              styles.loadingText,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+          >
+            SYNCING NEURAL NETWORK...
+          </Text>
         </View>
       ) : error ? (
         <View style={styles.centered}>
+          <Ionicons
+            name="warning-outline"
+            size={40}
+            color="#FF3366"
+            style={{ marginBottom: 8 }}
+          />
           <Text
             style={[
               styles.errorText,
               isDark ? styles.darkText : styles.lightText,
             ]}
           >
-            Failed to load your postings.
+            TELEMETRY LINK SEVERED
           </Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => refetch()}
           >
-            <Text style={styles.retryText}>Retry Request</Text>
+            <Text style={styles.retryText}>RE-ESTABLISH LINK</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -262,15 +279,15 @@ export default function MyPostingsScreen() {
             <RefreshControl
               refreshing={isFetching && !isLoading}
               onRefresh={refetch}
-              tintColor="#006837"
+              tintColor="#00FF66"
             />
           }
           ListEmptyComponent={
             <View style={styles.centered}>
               <Ionicons
-                name="folder-open-outline"
+                name="git-network-outline"
                 size={40}
-                color={isDark ? "#374151" : "#E5E7EB"}
+                color={isDark ? "#1F2937" : "#E5E7EB"}
                 style={{ marginBottom: 8 }}
               />
               <Text
@@ -279,7 +296,7 @@ export default function MyPostingsScreen() {
                   isDark ? styles.darkSubText : styles.lightSubText,
                 ]}
               >
-                You have no active opportunity postings.
+                NO ACTIVE NETWORK NODES DETECTED.
               </Text>
             </View>
           }
@@ -291,19 +308,20 @@ export default function MyPostingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
-  lightBg: { backgroundColor: "#FFFFFF" },
-  darkBg: { backgroundColor: "#111827" },
+  lightBg: { backgroundColor: "#F4F6F9" },
+  darkBg: { backgroundColor: "#030712" },
   listContainer: {
     paddingBottom: 32,
+    paddingTop: 12,
   },
   card: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     marginBottom: 12,
   },
-  lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
-  darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
+  lightCard: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
+  darkCard: { backgroundColor: "#0B0F19", borderColor: "#1F2937" },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -311,43 +329,47 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
     flex: 1,
     marginRight: 8,
+    letterSpacing: 0.5,
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   badgePublished: {
-    backgroundColor: "#00683722",
+    backgroundColor: "rgba(0, 255, 102, 0.15)",
   },
   badgePending: {
-    backgroundColor: "#D9770622",
+    backgroundColor: "rgba(0, 229, 255, 0.15)",
   },
   statusBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 9,
+    fontWeight: "800",
     textTransform: "uppercase",
+    letterSpacing: 1,
   },
   textPublished: {
-    color: "#006837",
+    color: "#00FF66",
   },
   textPending: {
-    color: "#D97706",
+    color: "#00E5FF",
   },
   programmeContainer: {
     marginBottom: 6,
   },
   programmeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    color: "#006837",
+    color: "#00E5FF",
+    letterSpacing: 0.5,
+    fontFamily: "monospace",
   },
   description: {
-    fontSize: 13,
+    fontSize: 12,
     marginBottom: 12,
     lineHeight: 18,
   },
@@ -356,7 +378,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB22",
+    borderTopColor: "rgba(156, 163, 175, 0.15)",
     paddingTop: 8,
   },
   footerItem: {
@@ -364,12 +386,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 10,
+    fontFamily: "monospace",
+    letterSpacing: 0.5,
   },
   actionRow: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB22",
+    borderTopColor: "rgba(156, 163, 175, 0.15)",
     paddingTop: 10,
     alignItems: "flex-end",
   },
@@ -378,23 +402,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 6,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#EF444433",
+    borderColor: "rgba(255, 51, 102, 0.3)",
   },
   lightCloseButton: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "rgba(255, 51, 102, 0.05)",
   },
   darkCloseButton: {
-    backgroundColor: "#7F1D1D22",
+    backgroundColor: "rgba(255, 51, 102, 0.1)",
   },
   closeButtonText: {
-    color: "#EF4444",
-    fontSize: 12,
-    fontWeight: "700",
+    color: "#FF3366",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
   lightText: { color: "#111827" },
-  darkText: { color: "#FFFFFF" },
+  darkText: { color: "#F9FAFB" },
   lightSubText: { color: "#6B7280" },
   darkSubText: { color: "#9CA3AF" },
   centered: {
@@ -403,24 +428,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 60,
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 2,
+  },
   errorText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "800",
     marginBottom: 12,
+    letterSpacing: 1,
+    color: "#FF3366",
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 11,
     textAlign: "center",
     paddingHorizontal: 20,
+    letterSpacing: 1,
+    fontWeight: "700",
   },
   retryButton: {
-    backgroundColor: "#006837",
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#00FF66",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   retryText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
+    color: "#00FF66",
+    fontWeight: "800",
+    fontSize: 10,
+    letterSpacing: 1,
   },
 });

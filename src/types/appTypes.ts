@@ -75,8 +75,8 @@ export interface UserProfileDto {
   userId: string;
   firstName: string;
   lastName: string;
-  headline: string;
-  bio: string;
+  systemHeadline: string;
+  aboutBio: string;
   programme: string;
   studentNumber: string;
 }

@@ -87,6 +87,8 @@ export default function BusinessLayout() {
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
       <Tabs.Screen name="post-opportunity" options={{ href: null }} />
       <Tabs.Screen name="messages/[id]" options={{ href: null }} />
+      <Tabs.Screen name="user/[id]" options={{ href: null }} />
+      {/* <Tabs.Screen name="user" options={{ href: null }} /> */}
       <Tabs.Screen name="applicant/[id]" options={{ href: null }} />
     </Tabs>
   );

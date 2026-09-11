@@ -6,11 +6,6 @@ import {
 } from "@microsoft/signalr/dist/esm/index.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-// import {
-//   HubConnectionBuilder,
-//   HubConnection,
-//   LogLevel,
-// } from "@microsoft/signalr";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL } from "../client";
 
@@ -65,6 +60,7 @@ export const messagesApi = {
 
   sendMessage: async (dto: SendMessageDto): Promise<MessageDto> => {
     const response = await apiClient.post<MessageDto>("/messages", dto);
+    console.log(response.data);
     return response.data;
   },
 
@@ -164,7 +160,7 @@ export function useSignalRMessages(otherUserId?: string) {
         const token = await AsyncStorage.getItem("accessToken");
 
         connection = new HubConnectionBuilder()
-          .withUrl(`http://localhost:5116/hubs/chat`, {
+          .withUrl(`http://192.168.10.111:5116/hubs/chat`, {
             accessTokenFactory: () => token || "",
           })
           .withAutomaticReconnect()
@@ -178,6 +174,19 @@ export function useSignalRMessages(otherUserId?: string) {
           queryClient.invalidateQueries({
             queryKey: messageKeys.chats(),
           });
+
+          // Determine the active chat participant ID depending on direction
+          const activeId =
+            otherUserId ||
+            (message.senderId === otherUserId
+              ? message.senderId
+              : message.receiverId);
+
+          if (activeId) {
+            queryClient.invalidateQueries({
+              queryKey: messageKeys.conversation(activeId),
+            });
+          }
 
           if (
             otherUserId &&

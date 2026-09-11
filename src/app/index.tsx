@@ -27,7 +27,7 @@ export default function WelcomeScreen() {
         </Text>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, {flex:1, justifyContent:"center"}]}>
         <ThemedButtonPrimary
           title="Get Started"
           onPress={() => router.push("/(auth)/role")}
@@ -46,35 +46,7 @@ export default function WelcomeScreen() {
             I already have an account
           </Text>
         </TouchableOpacity>
-        {/* Temporary Dev Button */}
-        <Link href="/student/home" asChild>
-          <Pressable
-            style={{ padding: 12, backgroundColor: "#007AFF", borderRadius: 8 }}
-          >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              DEV: Go to /students
-            </Text>
-          </Pressable>
-        </Link>
-        <Link href="/admin/dashboard" asChild>
-          <Pressable
-            style={{ padding: 12, backgroundColor: "#007AFF", borderRadius: 8 }}
-          >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              DEV: Go to /admin
-            </Text>
-          </Pressable>
-        </Link>
-        <Link href="/business/home" asChild>
-          <Pressable
-            style={{ padding: 12, backgroundColor: "#007AFF", borderRadius: 8 }}
-          >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              DEV: Go to /business
-            </Text>
-          </Pressable>
-        </Link>
-      </View>
+              </View>
     </View>
   );
 }

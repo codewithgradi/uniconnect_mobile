@@ -1,42 +1,43 @@
-import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  useColorScheme,
-  Modal,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Platform,
-} from "react-native";
+  useAddCertification,
+  useAddExperience,
+  useAddSkill,
+  useDeleteCertification,
+  useDeleteExperience,
+  useMyProfile,
+  useSaveCvUrl,
+  useUpdateProfile,
+} from "@/api/hooks/useProfile";
+import { ThemedButtonSecondary } from "@/components/ThemedButtonSecondary";
+import { SkillsManager } from "@/components/Themedskills";
+import { STYLES } from "@/Constants/styles";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import * as DocumentPicker from "expo-document-picker";
-import { ThemedButtonSecondary } from "@/components/ThemedButtonSecondary";
+import { useEffect, useState } from "react";
 import {
-  useMyProfile,
-  useUpdateProfile,
-  useSaveCvUrl,
-  useAddExperience,
-  useDeleteExperience,
-  useAddCertification,
-  useDeleteCertification,
-  useAddSkill,
-} from "@/api/hooks/useProfile";
-import { STYLES } from "@/Constants/styles";
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from "react-native";
 
 interface ProfileFormState {
   firstName: string;
   lastName: string;
   studentNumber: string;
   programme: string;
-  headline: string;
-  bio: string;
+  systemHeadline: string;
+  aboutBio: string;
 }
 
 interface ExperienceFormState {
@@ -63,25 +64,11 @@ interface SelectedFileState {
 }
 
 export default function StudentProfileScreen() {
-  
   const isDark = useColorScheme() === "dark";
 
   // --- TanStack Query Hooks ---
   const { data: profile, isLoading, isError, refetch } = useMyProfile();
 
-  // Add this useEffect to synchronize the form state with fetched profile data
-  useEffect(() => {
-    if (profile) {
-      setEditForm({
-        firstName: profile.firstName || "",
-        lastName: profile.lastName || "",
-        studentNumber: profile.studentNumber || "",
-        programme: profile.programme || "",
-        headline: profile.headline || profile.headline || "",
-        bio: profile.bio || profile.bio || "",
-      });
-    }
-  }, [profile]);
   const updateProfileMutation = useUpdateProfile();
   const saveCvUrlMutation = useSaveCvUrl();
   const addExperienceMutation = useAddExperience();
@@ -114,9 +101,23 @@ export default function StudentProfileScreen() {
     lastName: "",
     studentNumber: "",
     programme: "",
-    headline: "",
-    bio: "",
+    systemHeadline: "",
+    aboutBio: "",
   });
+
+  // Synchronize form state when profile data changes or is fetched
+  useEffect(() => {
+    if (profile) {
+      setEditForm({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        studentNumber: profile.studentNumber || "",
+        programme: profile.programme || "",
+        systemHeadline: profile.headline || "",
+        aboutBio: profile.bio || "",
+      });
+    }
+  }, [profile]);
 
   const [expForm, setExpForm] = useState<ExperienceFormState>({
     companyName: "",
@@ -147,17 +148,17 @@ export default function StudentProfileScreen() {
   const handleOpenEditModal = (
     tab: "profile" | "experience" | "certification",
   ) => {
-    if (profile && tab === "profile") {
+    setActiveModalTab(tab);
+    if (tab === "profile" && profile) {
       setEditForm({
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
         studentNumber: profile.studentNumber || "",
         programme: profile.programme || "",
-        headline: profile.headline || "",
-        bio: profile.bio || "",
+        systemHeadline: profile.headline || "",
+        aboutBio: profile.bio || "",
       });
     }
-    setActiveModalTab(tab);
     setIsEditModalVisible(true);
   };
 
@@ -182,7 +183,6 @@ export default function StudentProfileScreen() {
 
   // --- CV Operations ---
 
-  // Step 1: Select PDF from device storage
   const handleSelectCvDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -204,24 +204,23 @@ export default function StudentProfileScreen() {
     }
   };
 
-  // Step 2: Push staged file to backend API
   const handleSaveCvToBackend = async () => {
     if (!selectedCvFile) return;
 
     try {
       setIsUploading(true);
-      const formData = new FormData();
-      formData.append("file", {
-        uri:
+
+      await saveCvUrlMutation.mutateAsync({
+        fileUri:
           Platform.OS === "android"
             ? selectedCvFile.uri
             : selectedCvFile.uri.replace("file://", ""),
-        name: selectedCvFile.name,
-        type: selectedCvFile.mimeType || "application/pdf",
-      } as any);
+        fileName: selectedCvFile.name,
+        fileType: selectedCvFile.mimeType || "application/pdf",
+      });
 
-      await saveCvUrlMutation.mutateAsync(formData as any);
       setSelectedCvFile(null);
+      await refetch();
       Alert.alert("Success", "CV uploaded successfully.");
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Failed to save CV.");
@@ -230,7 +229,6 @@ export default function StudentProfileScreen() {
     }
   };
 
-  // Delete existing CV
   const handleRemoveCv = () => {
     Alert.alert(
       "Remove CV",
@@ -246,6 +244,7 @@ export default function StudentProfileScreen() {
               const emptyFormData = new FormData();
               await saveCvUrlMutation.mutateAsync(emptyFormData as any);
               setSelectedCvFile(null);
+              await refetch();
               Alert.alert("Success", "CV removed.");
             } catch (error: any) {
               Alert.alert("Error", error?.message || "Failed to remove CV.");
@@ -274,13 +273,18 @@ export default function StudentProfileScreen() {
 
   const handleSaveProfileDetails = async () => {
     try {
-      console.log("Submitting editForm:", editForm); // 1. Verify data isn't empty/stale
-      const result = await updateProfileMutation.mutateAsync(editForm);
-      console.log(editForm);
-      console.log("Mutation success result:", result); // 2. Check if it resolves silently
+      const payload = {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        studentNumber: editForm.studentNumber,
+        programme: editForm.programme,
+        headline: editForm.systemHeadline,
+        bio: editForm.aboutBio,
+      };
+      await updateProfileMutation.mutateAsync(payload as any);
+      await refetch(); // Force immediate pull of fresh backend data
       setIsEditModalVisible(false);
     } catch (error: any) {
-      console.error("Mutation error caught:", error); // 3. Catch silent swallowing
       Alert.alert("Error", error?.message || "Failed to update profile.");
     }
   };
@@ -288,9 +292,10 @@ export default function StudentProfileScreen() {
   const handleAddSkillSubmit = async () => {
     if (!newSkillInput.trim()) return;
     try {
-      await addSkillMutation.mutateAsync({ name: newSkillInput.trim() } as any);
+      await addSkillMutation.mutateAsync(newSkillInput.trim() as any);
       setNewSkillInput("");
       setIsAddingSkill(false);
+      await refetch();
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Failed to add skill.");
     }
@@ -324,6 +329,7 @@ export default function StudentProfileScreen() {
         endDate: null,
         isCurrent: false,
       });
+      await refetch();
       setIsEditModalVisible(false);
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Failed to add experience.");
@@ -342,6 +348,7 @@ export default function StudentProfileScreen() {
           onPress: async () => {
             try {
               await deleteExperienceMutation.mutateAsync(expId as any);
+              await refetch();
             } catch (error: any) {
               Alert.alert(
                 "Error",
@@ -377,6 +384,7 @@ export default function StudentProfileScreen() {
         issueDate: new Date(),
         credentialUrl: "",
       });
+      await refetch();
       setIsEditModalVisible(false);
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Failed to add certification.");
@@ -395,6 +403,7 @@ export default function StudentProfileScreen() {
           onPress: async () => {
             try {
               await deleteCertificationMutation.mutateAsync(certId as any);
+              await refetch();
             } catch (error: any) {
               Alert.alert(
                 "Error",
@@ -415,7 +424,7 @@ export default function StudentProfileScreen() {
           isDark ? localStyles.darkBg : localStyles.lightBg,
         ]}
       >
-        <ActivityIndicator size="large" color="#006837" />
+        <ActivityIndicator size="large" color="#00E599" />
       </View>
     );
   }
@@ -528,7 +537,6 @@ export default function StudentProfileScreen() {
         )}
 
         <View style={localStyles.rowWrapGap}>
-          {/* View attached CV if available on backend */}
           {profile.cvFileUrl && !selectedCvFile && (
             <TouchableOpacity
               style={localStyles.outlineBtn}
@@ -538,18 +546,24 @@ export default function StudentProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Step 1: Pick document from phone */}
           <TouchableOpacity
-            style={localStyles.secondaryBtn}
+            style={
+              isDark ? localStyles.secondaryBtnDark : localStyles.secondaryBtn
+            }
             onPress={handleSelectCvDocument}
             disabled={isUploading}
           >
-            <Text style={localStyles.secondaryBtnText}>
+            <Text
+              style={
+                isDark
+                  ? localStyles.secondaryBtnTextDark
+                  : localStyles.secondaryBtnText
+              }
+            >
               {selectedCvFile ? "Change Loaded PDF" : "Choose PDF"}
             </Text>
           </TouchableOpacity>
 
-          {/* Step 2: Upload staged PDF to backend */}
           {selectedCvFile && (
             <TouchableOpacity
               style={localStyles.primaryBtn}
@@ -566,7 +580,6 @@ export default function StudentProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Clear loaded local PDF selection */}
           {selectedCvFile && (
             <TouchableOpacity
               style={localStyles.cancelBtn}
@@ -576,10 +589,9 @@ export default function StudentProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Step 3: Remove existing CV from backend */}
           {profile.cvFileUrl && !selectedCvFile && (
             <TouchableOpacity
-              style={localStyles.dangerBtn}
+              style={isDark ? localStyles.dangerBtnDark : localStyles.dangerBtn}
               onPress={handleRemoveCv}
               disabled={isUploading || saveCvUrlMutation.isPending}
             >
@@ -608,24 +620,7 @@ export default function StudentProfileScreen() {
       </Text>
 
       {/* Skills Section */}
-      <View style={localStyles.sectionHeaderRow}>
-        <Text
-          style={[
-            localStyles.sectionTitle,
-            isDark ? localStyles.darkText : localStyles.lightText,
-          ]}
-        >
-          Skills
-        </Text>
-        <TouchableOpacity
-          onPress={() => setIsAddingSkill(!isAddingSkill)}
-          style={localStyles.inlineActionBtn}
-        >
-          <Text style={localStyles.inlineActionText}>
-            {isAddingSkill ? "Cancel" : "+ Add Skill"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <SkillsManager />
 
       {isAddingSkill && (
         <View style={localStyles.inlineInputRow}>
@@ -634,7 +629,7 @@ export default function StudentProfileScreen() {
               localStyles.input,
               isDark ? localStyles.darkInput : localStyles.lightInput,
             ]}
-            placeholder="Skill Name"
+            placeholder="Skill Name or ID"
             placeholderTextColor="#9CA3AF"
             value={newSkillInput}
             onChangeText={setNewSkillInput}
@@ -727,7 +722,7 @@ export default function StudentProfileScreen() {
               <Text style={localStyles.mutedText}>{exp.location}</Text>
             ) : null}
             <Text style={localStyles.mutedText}>
-              {formatDateDisplay(exp.startDate)} –{" "}
+              {formatDateDisplay(exp.startDate)} -{" "}
               {exp.isCurrent ? "Present" : formatDateDisplay(exp.endDate)}
             </Text>
           </View>
@@ -809,7 +804,9 @@ export default function StudentProfileScreen() {
               isDark ? localStyles.darkCard : localStyles.lightModal,
             ]}
           >
-            <View style={localStyles.tabRow}>
+            <View
+              style={[localStyles.tabRow, isDark && localStyles.darkTabRow]}
+            >
               {(["profile", "experience", "certification"] as const).map(
                 (tab) => (
                   <TouchableOpacity
@@ -839,67 +836,101 @@ export default function StudentProfileScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {activeModalTab === "profile" && (
                 <>
-                  <Text style={localStyles.label}>First Name</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    First Name
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
                       isDark ? localStyles.darkInput : localStyles.lightInput,
                     ]}
                     value={editForm.firstName}
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                     onChangeText={(val) =>
                       setEditForm((p) => ({ ...p, firstName: val }))
                     }
+                    editable={!updateProfileMutation.isPending}
                   />
 
-                  <Text style={localStyles.label}>Last Name</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Last Name
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
                       isDark ? localStyles.darkInput : localStyles.lightInput,
                     ]}
                     value={editForm.lastName}
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                     onChangeText={(val) =>
                       setEditForm((p) => ({ ...p, lastName: val }))
                     }
+                    editable={!updateProfileMutation.isPending}
                   />
 
-                  <Text style={localStyles.label}>Student Number</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Student Number
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
                       isDark ? localStyles.darkInput : localStyles.lightInput,
                     ]}
                     value={editForm.studentNumber}
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                     onChangeText={(val) =>
                       setEditForm((p) => ({ ...p, studentNumber: val }))
                     }
+                    editable={!updateProfileMutation.isPending}
                   />
 
-                  <Text style={localStyles.label}>Programme</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Programme
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
                       isDark ? localStyles.darkInput : localStyles.lightInput,
                     ]}
                     value={editForm.programme}
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                     onChangeText={(val) =>
                       setEditForm((p) => ({ ...p, programme: val }))
                     }
+                    editable={!updateProfileMutation.isPending}
                   />
 
-                  <Text style={localStyles.label}>Headline</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Headline
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
                       isDark ? localStyles.darkInput : localStyles.lightInput,
                     ]}
-                    value={editForm.headline}
+                    value={editForm.systemHeadline}
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                     onChangeText={(val) =>
-                      setEditForm((p) => ({ ...p, headline: val }))
+                      setEditForm((p) => ({ ...p, systemHeadline: val }))
                     }
+                    editable={!updateProfileMutation.isPending}
                   />
 
-                  <Text style={localStyles.label}>About Bio</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    About Bio
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -908,10 +939,12 @@ export default function StudentProfileScreen() {
                     ]}
                     multiline
                     numberOfLines={4}
-                    value={editForm.bio}
+                    value={editForm.aboutBio}
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                     onChangeText={(val) =>
-                      setEditForm((p) => ({ ...p, bio: val }))
+                      setEditForm((p) => ({ ...p, aboutBio: val }))
                     }
+                    editable={!updateProfileMutation.isPending}
                   />
 
                   <View style={localStyles.rowGap}>
@@ -938,7 +971,11 @@ export default function StudentProfileScreen() {
 
               {activeModalTab === "experience" && (
                 <>
-                  <Text style={localStyles.label}>Title *</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Title *
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -952,7 +989,11 @@ export default function StudentProfileScreen() {
                     }
                   />
 
-                  <Text style={localStyles.label}>Company Name *</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Company Name *
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -966,7 +1007,11 @@ export default function StudentProfileScreen() {
                     }
                   />
 
-                  <Text style={localStyles.label}>Location</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Location
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -980,7 +1025,11 @@ export default function StudentProfileScreen() {
                     }
                   />
 
-                  <Text style={localStyles.label}>Start Date</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Start Date
+                  </Text>
                   <TouchableOpacity
                     style={[
                       localStyles.datePickerButton,
@@ -1011,7 +1060,14 @@ export default function StudentProfileScreen() {
                   )}
 
                   <View style={localStyles.rowSpaceBetween}>
-                    <Text style={localStyles.label}>Is Current Role?</Text>
+                    <Text
+                      style={[
+                        localStyles.label,
+                        isDark && localStyles.darkLabel,
+                      ]}
+                    >
+                      Is Current Role?
+                    </Text>
                     <TouchableOpacity
                       onPress={() =>
                         setExpForm((p) => ({
@@ -1029,7 +1085,14 @@ export default function StudentProfileScreen() {
 
                   {!expForm.isCurrent && (
                     <>
-                      <Text style={localStyles.label}>End Date</Text>
+                      <Text
+                        style={[
+                          localStyles.label,
+                          isDark && localStyles.darkLabel,
+                        ]}
+                      >
+                        End Date
+                      </Text>
                       <TouchableOpacity
                         style={[
                           localStyles.datePickerButton,
@@ -1093,7 +1156,11 @@ export default function StudentProfileScreen() {
 
               {activeModalTab === "certification" && (
                 <>
-                  <Text style={localStyles.label}>Certification Name *</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Certification Name *
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -1107,7 +1174,11 @@ export default function StudentProfileScreen() {
                     }
                   />
 
-                  <Text style={localStyles.label}>Issuing Organization *</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Issuing Organization *
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -1121,7 +1192,11 @@ export default function StudentProfileScreen() {
                     }
                   />
 
-                  <Text style={localStyles.label}>Credential URL</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Credential URL
+                  </Text>
                   <TextInput
                     style={[
                       localStyles.input,
@@ -1135,7 +1210,11 @@ export default function StudentProfileScreen() {
                     }
                   />
 
-                  <Text style={localStyles.label}>Issue Date</Text>
+                  <Text
+                    style={[localStyles.label, isDark && localStyles.darkLabel]}
+                  >
+                    Issue Date
+                  </Text>
                   <TouchableOpacity
                     style={[
                       localStyles.datePickerButton,
@@ -1201,18 +1280,36 @@ const localStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  darkBg: { backgroundColor: "#121212" },
-  lightBg: { backgroundColor: "#F9FAFB" },
-  darkCard: { backgroundColor: "#1E1E1E" },
-  lightCard: { backgroundColor: "#FFFFFF" },
+  darkBg: { backgroundColor: "#0A0F1D" },
+  lightBg: { backgroundColor: "#F8FAFC" },
+  darkCard: {
+    backgroundColor: "#111827",
+    borderColor: "#1F2937",
+    borderWidth: 1,
+  },
+  lightCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#F1F5F9",
+    borderWidth: 1,
+  },
   lightModal: { backgroundColor: "#FFFFFF" },
-  darkText: { color: "#FFFFFF" },
-  lightText: { color: "#111827" },
+  darkText: { color: "#F8FAFC" },
+  lightText: { color: "#0F172A" },
   darkSubtext: { color: "#9CA3AF" },
   lightSubtext: { color: "#4B5563" },
-  darkInput: { backgroundColor: "#2A2A2A", color: "#FFFFFF" },
-  lightInput: { backgroundColor: "#F3F4F6", color: "#111827" },
-  darkChip: { backgroundColor: "#2A2A2A" },
+  darkInput: {
+    backgroundColor: "#1F2937",
+    color: "#F8FAFC",
+    borderColor: "#374151",
+    borderWidth: 1,
+  },
+  lightInput: {
+    backgroundColor: "#F3F4F6",
+    color: "#111827",
+    borderColor: "#E5E7EB",
+    borderWidth: 1,
+  },
+  darkChip: { backgroundColor: "#1F2937" },
   lightChip: { backgroundColor: "#E5E7EB" },
   container: { flex: 1, padding: 16 },
   header: { alignItems: "center", marginVertical: 20 },
@@ -1220,29 +1317,32 @@ const localStyles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#006837",
+    backgroundColor: "#00E599",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
-  avatarText: { color: "#FFFFFF", fontSize: 28, fontWeight: "bold" },
+  avatarText: { color: "#0A0F1D", fontSize: 28, fontWeight: "bold" },
   name: { fontSize: 22, fontWeight: "bold", marginBottom: 4 },
-  subtext: { fontSize: 14, color: "#6B7280", marginBottom: 2 },
+  subtext: { fontSize: 14, color: "#64748B", marginBottom: 2 },
   mutedText: { fontSize: 13, color: "#9CA3AF" },
   editBtn: { marginTop: 12 },
-  card: { padding: 16, borderRadius: 12, marginBottom: 16 },
+  card: { padding: 16, borderRadius: 16, marginBottom: 16 },
   cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
   stagedBox: {
     padding: 12,
     borderRadius: 8,
-    backgroundColor: "rgba(0, 104, 55, 0.08)",
+    backgroundColor: "rgba(0, 229, 153, 0.08)",
     marginVertical: 8,
   },
-  stagedLabel: { fontSize: 12, color: "#006837", fontWeight: "600" },
+  stagedLabel: { fontSize: 12, color: "#00E599", fontWeight: "600" },
   stagedFileName: { fontSize: 14, fontWeight: "500", marginVertical: 2 },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
     marginTop: 16,
     marginBottom: 8,
   },
@@ -1253,12 +1353,12 @@ const localStyles = StyleSheet.create({
   },
   bodyText: { fontSize: 14, lineHeight: 20 },
   inlineActionBtn: { paddingVertical: 4 },
-  inlineActionText: { color: "#006837", fontWeight: "600" },
+  inlineActionText: { color: "#00E599", fontWeight: "600" },
   inlineInputRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   input: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     fontSize: 14,
   },
@@ -1294,14 +1394,14 @@ const localStyles = StyleSheet.create({
   emptyText: { color: "#9CA3AF", fontSize: 13, fontStyle: "italic" },
   rowGap: { flexDirection: "row", gap: 8, marginTop: 12 },
   primaryBtn: {
-    backgroundColor: "#006837",
+    backgroundColor: "#00E599",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  primaryBtnText: { color: "#FFFFFF", fontWeight: "600" },
+  primaryBtnText: { color: "#0A0F1D", fontWeight: "700" },
   secondaryBtn: {
     backgroundColor: "#E5E7EB",
     paddingHorizontal: 16,
@@ -1310,7 +1410,18 @@ const localStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  secondaryBtnDark: {
+    backgroundColor: "#1F2937",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
   secondaryBtnText: { color: "#374151", fontWeight: "600" },
+  secondaryBtnTextDark: { color: "#F8FAFC", fontWeight: "600" },
   dangerBtn: {
     backgroundColor: "#FEE2E2",
     paddingHorizontal: 16,
@@ -1319,15 +1430,23 @@ const localStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  dangerBtnText: { color: "#DC2626", fontWeight: "600" },
+  dangerBtnDark: {
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dangerBtnText: { color: "#EF4444", fontWeight: "600" },
   outlineBtn: {
     borderWidth: 1,
-    borderColor: "#006837",
+    borderColor: "#00E599",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
-  outlineBtnText: { color: "#006837", fontWeight: "600" },
+  outlineBtnText: { color: "#00E599", fontWeight: "600" },
   cancelBtn: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1336,26 +1455,32 @@ const localStyles = StyleSheet.create({
   errorText: { marginBottom: 12 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     padding: 20,
   },
-  modalContent: { borderRadius: 16, padding: 20, maxHeight: "80%" },
+  modalContent: { borderRadius: 20, padding: 20, maxHeight: "80%" },
   tabRow: {
     flexDirection: "row",
     marginBottom: 16,
     borderBottomWidth: 1,
     borderColor: "#E5E7EB",
   },
+  darkTabRow: {
+    borderColor: "#1F2937",
+  },
   tab: { flex: 1, paddingVertical: 8, alignItems: "center" },
-  activeTab: { borderBottomWidth: 2, borderColor: "#006837" },
+  activeTab: { borderBottomWidth: 2, borderColor: "#00E599" },
   tabText: { color: "#9CA3AF", fontSize: 14 },
-  activeTabText: { color: "#006837", fontWeight: "bold" },
+  activeTabText: { color: "#00E599", fontWeight: "bold" },
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
+    color: "#64748B",
     marginTop: 8,
     marginBottom: 4,
+  },
+  darkLabel: {
+    color: "#9CA3AF",
   },
 });

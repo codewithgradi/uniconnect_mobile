@@ -14,11 +14,9 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import {
-  getMyConnections,
   getPendingRequests,
   acceptConnectionRequest,
   rejectConnectionRequest,
-  removeConnection,
 } from "@/api/hooks/useConnection";
 import { useSearchProfiles, useProfileById } from "@/api/hooks/useProfile";
 
@@ -103,9 +101,7 @@ function PendingRequestRow({
 
 export default function NetworkScreen() {
   const isDark = useColorScheme() === "dark";
-  const [activeTab, setActiveTab] = useState<
-    "People" | "Requests" | "Connections"
-  >("People");
+  const [activeTab, setActiveTab] = useState<"People" | "Requests">("People");
 
   const router = useRouter();
 
@@ -116,11 +112,6 @@ export default function NetworkScreen() {
   const queryClient = useQueryClient();
 
   // Queries for real data
-  const { data: connections = [], isLoading: isLoadingConnections } = useQuery({
-    queryKey: ["connections"],
-    queryFn: getMyConnections,
-  });
-
   const { data: requests = [], isLoading: isLoadingRequests } = useQuery({
     queryKey: ["connectionRequestsPending"],
     queryFn: getPendingRequests,
@@ -140,7 +131,6 @@ export default function NetworkScreen() {
       queryClient.invalidateQueries({
         queryKey: ["connectionRequestsPending"],
       });
-      queryClient.invalidateQueries({ queryKey: ["connections"] });
     },
     onError: (err: any) => {
       Alert.alert(
@@ -165,19 +155,6 @@ export default function NetworkScreen() {
     },
   });
 
-  const removeMutation = useMutation({
-    mutationFn: removeConnection,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["connections"] });
-    },
-    onError: (err: any) => {
-      Alert.alert(
-        "Error",
-        err?.response?.data?.message || "Failed to remove connection.",
-      );
-    },
-  });
-
   return (
     <ScrollView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
@@ -185,7 +162,7 @@ export default function NetworkScreen() {
     >
       {/* Header Tabs */}
       <View style={styles.tabContainer}>
-        {(["People", "Requests", "Connections"] as const).map((tab) => (
+        {(["People", "Requests"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
@@ -244,94 +221,6 @@ export default function NetworkScreen() {
                 rejectPending={rejectMutation.isPending}
               />
             ))
-          )}
-        </View>
-      )}
-
-      {activeTab === "Connections" && (
-        <View>
-          <Text
-            style={[
-              styles.sectionTitle,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            My Connections ({connections.length})
-          </Text>
-
-          {isLoadingConnections ? (
-            <ActivityIndicator
-              size="small"
-              color="#006837"
-              style={{ marginTop: 20 }}
-            />
-          ) : connections.length === 0 ? (
-            <Text
-              style={[
-                styles.emptyText,
-                isDark ? styles.darkMuted : styles.lightMuted,
-              ]}
-            >
-              You haven't added any connections yet.
-            </Text>
-          ) : (
-            connections.map((item) => {
-              const firstName = item?.firstName || "";
-              const lastName = item?.lastName || "";
-              const fullName =
-                `${firstName} ${lastName}`.trim() || "Unknown User";
-              const initials =
-                `${firstName?.[0] || ""}${lastName?.[0] || ""}` || "U";
-
-              return (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.card,
-                    isDark ? styles.darkCard : styles.lightCard,
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      flexDirection: "row",
-                      alignItems: "center",
-                    }}
-                    onPress={() =>
-                      router.push(`/student/profile/${item.id}` as any)
-                    }
-                  >
-                    <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarInitials}>{initials}</Text>
-                    </View>
-                    <View style={styles.info}>
-                      <Text
-                        style={[
-                          styles.name,
-                          isDark ? styles.darkText : styles.lightText,
-                        ]}
-                      >
-                        {fullName}
-                      </Text>
-                      <Text style={styles.role}>
-                        {item.headline || item.institution || "Student / Alum"}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.removeBtn}
-                    onPress={() => removeMutation.mutate(item.id)}
-                    disabled={removeMutation.isPending}
-                  >
-                    <Ionicons
-                      name="person-remove-outline"
-                      size={18}
-                      color="#EF4444"
-                    />
-                  </TouchableOpacity>
-                </View>
-              );
-            })
           )}
         </View>
       )}
@@ -502,15 +391,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#EF4444",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  removeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     borderWidth: 1,
     borderColor: "#EF4444",
     justifyContent: "center",

@@ -12,6 +12,7 @@ import {
 export const profilesApi = {
   getMyProfile: async (): Promise<ProfileDto> => {
     const response = await api.get("/profiles/me");
+    console.log(response.data);
     return response.data;
   },
   getAllProfile: async (): Promise<ProfileDto> => {

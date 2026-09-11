@@ -17,6 +17,32 @@ export interface CreateOpportunityDto {
   description: string;
   targetProgramme?: string;
 }
+export interface ApplicantDto {
+  firstName: string;
+  lastName: string;
+  systemHeadline: string;
+  aboutBio: string;
+  cvFileUrl: string;
+}
+
+export interface GetOpportunityWithApplications {
+  id: string;
+  userId: string;
+  businessProfileId: string;
+  title: string;
+  description: string;
+  applicants: ApplicantDto[];
+}
+
+export const fetchOpportunityWithApplications = async (
+  opportunityId: string,
+): Promise<GetOpportunityWithApplications> => {
+  const { data } = await api.get<GetOpportunityWithApplications>(
+    `/api/opportunities/${opportunityId}/applications`,
+  );
+  console.log(data);
+  return data;
+};
 
 // --- Query Keys ---
 export const opportunityKeys = {
@@ -40,9 +66,7 @@ export const opportunitiesApi = {
   getMyOpportunities: async (
     businessProfileId: string,
   ): Promise<Opportunity[]> => {
-    const response = await api.get(
-      `/opportunities/${businessProfileId}`,
-    );
+    const response = await api.get(`/opportunities/${businessProfileId}`);
     console.log("Fetching opportunity with ID:", businessProfileId);
     return response.data;
   },
@@ -70,16 +94,9 @@ export const opportunitiesApi = {
     }
   },
 
-  apply: async ({
-    opportunityId,
-    cvFileUrl,
-  }: {
-    opportunityId: string;
-    cvFileUrl: string;
-  }): Promise<void> => {
-    await api.post(`/opportunities/${opportunityId}/apply`, {
-      cvFileUrl,
-    });
+  apply: async (opportunityId: string): Promise<any> => {
+    const response = await api.post(`/opportunities/${opportunityId}/apply`);
+    return response.data;
   },
 
   approve: async (opportunityId: string): Promise<void> => {

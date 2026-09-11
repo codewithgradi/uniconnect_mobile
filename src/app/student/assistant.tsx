@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ThemedInput } from "../../components/ThemedInput";
 import { useChat } from "@/api/hooks/useChat";
@@ -78,124 +79,140 @@ export default function AIAssistantScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <SafeAreaView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      edges={["left", "right"]}
     >
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={() =>
-          scrollViewRef.current?.scrollToEnd({ animated: true })
-        }
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
-        {/* Intro */}
-        <View style={styles.aiIntro}>
-          <View style={styles.aiAvatar}>
-            <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={() =>
+            scrollViewRef.current?.scrollToEnd({ animated: true })
+          }
+        >
+          {/* Intro */}
+          <View style={styles.aiIntro}>
+            <View style={styles.aiAvatar}>
+              <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+            </View>
+            <Text
+              style={[
+                styles.aiTitle,
+                isDark ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Hello there! 👋
+            </Text>
+            <Text style={styles.aiSub}>
+              I'm your AI career assistant. How can I help you today?
+            </Text>
           </View>
-          <Text
-            style={[
-              styles.aiTitle,
-              isDark ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Hello there! 👋
-          </Text>
-          <Text style={styles.aiSub}>
-            I'm your AI career assistant. How can I help you today?
-          </Text>
-        </View>
 
-        {/* Dynamic Message List */}
-        {messages.map((msg) => {
-          if (msg.sender === "user") {
-            return (
-              <View key={msg.id} style={styles.userBubble}>
-                <Text style={styles.userBubbleText}>{msg.text}</Text>
-              </View>
-            );
-          } else {
-            return (
-              <View
-                key={msg.id}
-                style={[
-                  styles.aiBubble,
-                  isDark ? styles.darkCard : styles.lightCard,
-                ]}
-              >
-                <Text
+          {/* Dynamic Message List */}
+          {messages.map((msg) => {
+            if (msg.sender === "user") {
+              return (
+                <View key={msg.id} style={styles.userBubble}>
+                  <Text style={styles.userBubbleText}>{msg.text}</Text>
+                </View>
+              );
+            } else {
+              return (
+                <View
+                  key={msg.id}
                   style={[
-                    styles.aiBubbleText,
-                    isDark ? styles.darkText : styles.lightText,
+                    styles.aiBubble,
+                    isDark ? styles.darkCard : styles.lightCard,
                   ]}
                 >
-                  {msg.text}
-                </Text>
+                  <Text
+                    style={[
+                      styles.aiBubbleText,
+                      isDark ? styles.darkText : styles.lightText,
+                    ]}
+                  >
+                    {msg.text}
+                  </Text>
+                </View>
+              );
+            }
+          })}
+
+          {/* Typing Indicator */}
+          {isSendingMessage && (
+            <View
+              style={[
+                styles.aiBubble,
+                styles.typingBubble,
+                isDark ? styles.darkCard : styles.lightCard,
+              ]}
+            >
+              <View style={styles.typingIndicator}>
+                <View
+                  style={[
+                    styles.dot,
+                    isDark ? styles.darkDot : styles.lightDot,
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.dot,
+                    styles.dotMiddle,
+                    isDark ? styles.darkDot : styles.lightDot,
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.dot,
+                    isDark ? styles.darkDot : styles.lightDot,
+                  ]}
+                />
               </View>
-            );
-          }
-        })}
-
-        {/* Typing Indicator */}
-        {isSendingMessage && (
-          <View
-            style={[
-              styles.aiBubble,
-              styles.typingBubble,
-              isDark ? styles.darkCard : styles.lightCard,
-            ]}
-          >
-            <View style={styles.typingIndicator}>
-              <View
-                style={[styles.dot, isDark ? styles.darkDot : styles.lightDot]}
-              />
-              <View
-                style={[
-                  styles.dot,
-                  styles.dotMiddle,
-                  isDark ? styles.darkDot : styles.lightDot,
-                ]}
-              />
-              <View
-                style={[styles.dot, isDark ? styles.darkDot : styles.lightDot]}
-              />
             </View>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
 
-      {/* Floating Input Area */}
-      <View
-        style={[
-          styles.inputBar,
-          isDark ? styles.darkInputBar : styles.lightInputBar,
-        ]}
-      >
-        <ThemedInput
-          placeholder="Type a message..."
-          value={inputText}
-          onChangeText={setInputText}
-          style={styles.chatInput}
-          onSubmitEditing={handleSend}
-          returnKeyType="send"
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, isSendingMessage && styles.disabledButton]}
-          onPress={handleSend}
-          disabled={isSendingMessage}
+        {/* Floating Input Area */}
+        <View
+          style={[
+            styles.inputBar,
+            isDark ? styles.darkInputBar : styles.lightInputBar,
+            { marginBottom: 70 }
+          ]}
         >
-          <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <ThemedInput
+            placeholder="Type a message..."
+            value={inputText}
+            onChangeText={setInputText}
+            style={styles.chatInput}
+            onSubmitEditing={handleSend}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              isSendingMessage && styles.disabledButton,
+            ]}
+            onPress={handleSend}
+            disabled={isSendingMessage}
+          >
+            <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  keyboardContainer: { flex: 1 },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
   messagesContainer: { flex: 1, paddingHorizontal: 16 },

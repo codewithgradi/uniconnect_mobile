@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,27 +25,37 @@ export default function BusinessProfileScreen() {
       Linking.openURL(profile.websiteUrl);
     }
   };
+const handleLogout = async () => {
+  const performLogout = async () => {
+    try {
+      console.log("Starting logout process...");
+      await AsyncStorage.removeItem("token");
+      console.log("Token removed, redirecting...");
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("Logout execution error:", error);
+      Alert.alert("Error", "Failed to log out properly.");
+    }
+  };
 
-  const handleLogout = async () => {
+  if (Platform.OS === "web") {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      await performLogout();
+    }
+  } else {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log Out",
         style: "destructive",
-        onPress: async () => {
-          try {
-            // Clear your auth tokens/storage keys here (e.g., JWT token, user session)
-            await AsyncStorage.removeItem("token"); // Adjust key name to match what you use for your auth token
-
-            // Navigate back to the home/welcome/login screen
-            router.replace("/"); // Or router.replace("/auth/login") depending on your expo-router structure
-          } catch (error) {
-            Alert.alert("Error", "Failed to log out properly.");
-          }
+        onPress: () => {
+          performLogout();
         },
       },
     ]);
-  };
+  }
+};
 
   if (isLoading) {
     return (

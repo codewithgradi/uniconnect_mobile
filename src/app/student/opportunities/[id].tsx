@@ -1,7 +1,9 @@
-import { opportunitiesApi, opportunityKeys } from "@/api/opportunity.api"; // Adjust path to your api file if needed
+import { opportunitiesApi, opportunityKeys } from "@/api/opportunity.api";
+import { useApplyForOpportunity } from "@/api/hooks/useOpportunity";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +21,7 @@ export default function StudentOpportunityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [hasApplied, setHasApplied] = useState(false);
 
   const {
     data: opportunity,
@@ -30,13 +33,47 @@ export default function StudentOpportunityDetailScreen() {
     enabled: !!id,
   });
 
+  const applyMutation = useApplyForOpportunity();
+
   const handleApply = () => {
-    if (!opportunity) return;
-    Alert.alert(
-      "Application Sent",
-      `Your profile and CV have been submitted for ${opportunity.title}.`,
-      [{ text: "OK", onPress: () => router.back() }],
-    );
+    if (!opportunity || !id) return;
+
+    applyMutation.mutate(id, {
+      onSuccess: (data: any) => {
+        setHasApplied(true);
+        const serverMessage =
+          data?.message ||
+          `Your profile and CV have been successfully submitted for ${opportunity.title}.`;
+
+        Alert.alert("Application Sent", serverMessage, [{ text: "OK" }]);
+      },
+      onError: (error: any) => {
+        const errorMsg = error?.response?.data?.message || error.message || "";
+
+        if (
+          errorMsg.toLowerCase().includes("invalid cv") ||
+          errorMsg.toLowerCase().includes("format") ||
+          errorMsg.toLowerCase().includes("cv")
+        ) {
+          Alert.alert(
+            "CV Required",
+            "Please upload a CV to your profile before applying for opportunities.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Go to Profile",
+                onPress: () => router.push("/(tabs)/profile" as any),
+              },
+            ],
+          );
+        } else {
+          Alert.alert(
+            "Application Failed",
+            errorMsg || "Something went wrong. Please try again.",
+          );
+        }
+      },
+    });
   };
 
   const handleCancel = () => {
@@ -158,8 +195,21 @@ export default function StudentOpportunityDetailScreen() {
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
-          <Text style={styles.applyBtnText}>Apply Now</Text>
+        <TouchableOpacity
+          style={[
+            styles.applyBtn,
+            (applyMutation.isPending || hasApplied) && styles.appliedBtn,
+          ]}
+          onPress={handleApply}
+          disabled={applyMutation.isPending || hasApplied}
+        >
+          {applyMutation.isPending ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.applyBtnText}>
+              {hasApplied ? "Applied" : "Apply Now"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -237,6 +287,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelBtnText: { color: "#374151", fontWeight: "700", fontSize: 13 },
   applyBtn: {
@@ -245,7 +296,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
   },
+  appliedBtn: { backgroundColor: "#9CA3AF" },
   applyBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },

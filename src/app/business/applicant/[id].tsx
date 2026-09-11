@@ -1,213 +1,261 @@
-import React from "react";
+import React, { useState } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
-  ScrollView,
+  Text,
+  View,
+  FlatList,
   TouchableOpacity,
-  useColorScheme,
   ActivityIndicator,
+  SafeAreaView,
+  useColorScheme,
 } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useLocalSearchParams } from "expo-router";
-import { useProfileById } from "@/api/hooks/useProfile"; // Adjust path as needed
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { ThemedInput } from "@/components/ThemedInput";
+import { useOpportunityWithApplications } from "@/api/hooks/useOpportunity";
 
-export default function ApplicantDetailsScreen() {
+export default function OpportunityDetailScreen() {
+  const params = useLocalSearchParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  console.log("Extracted Opportunity ID from route:", id);
+
+  const router = useRouter();
   const isDark = useColorScheme() === "dark";
-  const { profileId } = useLocalSearchParams<{ profileId: string }>();
 
-  const { data: profile, isLoading, error } = useProfileById(profileId);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const {
+    data: opportunity,
+    isLoading,
+    error,
+  } = useOpportunityWithApplications(id ?? "");
+
+  const applicants = opportunity?.applicants ?? [];
+
+  const filteredApplicants = applicants.filter(
+    (item) =>
+      `${item.firstName} ${item.lastName}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      item.systemHeadline.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+ const renderApplicantItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[
+        styles.applicantCard,
+        isDark ? styles.darkCard : styles.lightCard,
+      ]}
+      activeOpacity={0.7}
+      onPress={() => router.push(`/business/user/${item.profileId}` as any)}
+    >
+      <View style={styles.avatarContainer}>
+        <Text style={styles.avatarText}>
+          {item.firstName?.[0]}
+          {item.lastName?.[0]}
+        </Text>
+      </View>
+      <View style={styles.applicantInfo}>
+        <Text
+          style={[
+            styles.applicantName,
+            isDark ? styles.darkText : styles.lightText,
+          ]}
+        >
+          {item.firstName} {item.lastName}
+        </Text>
+        <Text
+          style={[
+            styles.headline,
+            isDark ? styles.darkSubText : styles.lightSubText,
+          ]}
+          numberOfLines={1}
+        >
+          {item.systemHeadline}
+        </Text>
+        <Text style={styles.programmeText}>{item.aboutBio}</Text>
+      </View>
+      <Ionicons
+        name="chevron-forward"
+        size={18}
+        color={isDark ? "#4B5563" : "#9CA3AF"}
+      />
+    </TouchableOpacity>
+  );
 
   if (isLoading) {
     return (
-      <View
+      <SafeAreaView
         style={[
-          styles.centerContainer,
+          styles.container,
           isDark ? styles.darkBg : styles.lightBg,
+          styles.centerLoader,
         ]}
       >
         <ActivityIndicator size="large" color="#006837" />
-      </View>
+      </SafeAreaView>
     );
   }
 
-  if (error || !profile) {
+  if (error) {
     return (
-      <View
+      <SafeAreaView
         style={[
-          styles.centerContainer,
+          styles.container,
           isDark ? styles.darkBg : styles.lightBg,
+          styles.centerLoader,
         ]}
       >
         <Text
           style={[
-            styles.errorText,
+            styles.sectionHeader,
             isDark ? styles.darkText : styles.lightText,
           ]}
         >
-          Failed to load applicant details.
+          Failed to load opportunity data.
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // Helper to generate initials for avatar fallback
-  const getInitials = (name?: string) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
   return (
-    <ScrollView
+    <SafeAreaView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
-      showsVerticalScrollIndicator={false}
     >
-      {/* Profile Summary Header */}
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(profile.firstName+" "+profile.lastName)}</Text>
-        </View>
-        <Text
-          style={[styles.name, isDark ? styles.darkText : styles.lightText]}
-        >
-          {profile.firstName + " " + profile.lastName}
-        </Text>
-        <Text style={styles.subText}>{profile.bio}</Text>
-        <Text style={styles.subText}>{profile.cvFileUrl}</Text>
-      </View>
-
-      {/* Skills Section */}
-      {profile.skills && profile.skills.length > 0 && (
-        <>
-          <Text style={styles.sectionHeader}>Skills</Text>
-          <View style={styles.skillsRow}>
-            {profile.skills.map((skillItem: any) => {
-              const skillName =
-                skillItem.skillName || skillItem.name || skillItem;
-              return (
-                <View key={skillItem.id || skillName} style={styles.skillChip}>
-                  <Text style={styles.skillText}>{skillName}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </>
-      )}
-
-      {/* Projects Section / Experience */}
-      {profile.experiences && profile.experiences.length > 0 && (
-        <>
-          <Text style={styles.sectionHeader}>Experience / Projects</Text>
-          {profile.experiences.map((exp: any) => (
+      <FlatList
+        data={filteredApplicants}
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={renderApplicantItem}
+        contentContainerStyle={styles.listContainer}
+        ListHeaderComponent={
+          <View style={styles.headerContainer}>
+            <Text style={styles.sectionTitle}>Opportunity Metadata</Text>
             <View
-              key={exp.id}
               style={[
-                styles.projectCard,
+                styles.oppInfoBox,
                 isDark ? styles.darkCard : styles.lightCard,
               ]}
             >
               <Text
                 style={[
-                  styles.projectTitle,
+                  styles.oppIdText,
+                  isDark ? styles.darkSubText : styles.lightSubText,
+                ]}
+              >
+                Title: {opportunity?.title}
+              </Text>
+              <Text
+                style={[
+                  styles.oppIdText,
+                  isDark ? styles.darkSubText : styles.lightSubText,
+                ]}
+              >
+                Description: {opportunity?.description}
+              </Text>
+              <Text
+                style={[
+                  styles.sectionHeader,
                   isDark ? styles.darkText : styles.lightText,
                 ]}
               >
-                {exp.title || exp.role}
-              </Text>
-              <Text style={styles.projectDesc}>
-                {exp.description || exp.company}
+                Applicants List ({applicants.length})
               </Text>
             </View>
-          ))}
-        </>
-      )}
 
-      {/* Action Footer Buttons */}
-      <View style={styles.footerRow}>
-        <TouchableOpacity style={styles.shortlistBtn}>
-          <Text style={styles.shortlistBtnText}>Shortlist</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.messageBtn}>
-          <Ionicons name="chatbubble-outline" size={18} color="#006837" />
-          <Text style={styles.messageBtnText}>Message</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <Text style={styles.sectionTitle}>Filter Candidates</Text>
+            <View style={styles.searchWrapper}>
+              <ThemedInput
+                placeholder="Search candidates by name..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+          </View>
+        }
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
-  centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },
-  header: { alignItems: "center", marginVertical: 20 },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#006837",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  avatarText: { color: "#FFFFFF", fontSize: 24, fontWeight: "700" },
-  name: { fontSize: 20, fontWeight: "700" },
-  subText: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-  sectionHeader: {
+  centerLoader: { justifyContent: "center", alignItems: "center" },
+  headerContainer: { marginBottom: 4 },
+  sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
     color: "#9CA3AF",
     textTransform: "uppercase",
-    marginTop: 18,
-    marginBottom: 8,
-  },
-  skillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  skillChip: {
-    backgroundColor: "#E6F0EB",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  skillText: { color: "#006837", fontSize: 12, fontWeight: "600" },
-  projectCard: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginTop: 20,
     marginBottom: 10,
   },
-  projectTitle: { fontSize: 15, fontWeight: "700" },
-  projectDesc: { fontSize: 13, color: "#6B7280", marginTop: 4 },
-  footerRow: { flexDirection: "row", gap: 12, marginTop: 24, marginBottom: 40 },
-  shortlistBtn: {
-    flex: 1,
-    backgroundColor: "#006837",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
+  oppInfoBox: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  shortlistBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
-  messageBtn: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: "#006837",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
+  oppIdText: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  searchWrapper: {
+    marginBottom: 4,
+  },
+  listContainer: {
+    paddingBottom: 32,
+  },
+  applicantCard: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    marginBottom: 10,
   },
-  messageBtnText: { color: "#006837", fontSize: 15, fontWeight: "700" },
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
+  avatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#00683722",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  avatarText: {
+    color: "#006837",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  applicantInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  applicantName: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  headline: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  programmeText: {
+    fontSize: 11,
+    color: "#006837",
+    fontWeight: "700",
+    marginTop: 4,
+  },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
-  errorText: { fontSize: 16 },
+  lightSubText: { color: "#6B7280" },
+  darkSubText: { color: "#9CA3AF" },
+  loader: { marginVertical: 16 },
 });
