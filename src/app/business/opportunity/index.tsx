@@ -4,7 +4,7 @@ import {
 } from "@/api/hooks/useOpportunity";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +28,8 @@ interface Opportunity {
   createdAtUtc: string;
 }
 
+type FilterTab = "ALL" | "ACTIVE" | "CLOSED";
+
 export default function MyPostingsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
@@ -48,24 +50,34 @@ export default function MyPostingsScreen() {
   const refetch = myQuery.refetch;
 
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
 
   const getStatusInfo = (status: string | number | undefined) => {
     const s = typeof status === "string" ? status.toLowerCase() : status;
 
     if (s === 2 || s === "pendingapproval" || s === "pending") {
-      return { label: "PENDING_SYNC", isPending: true };
+      return { label: "PENDING_SYNC", isPending: true, isClosed: false };
     }
     if (s === 1 || s === "draft") {
-      return { label: "STAGED_DRAFT", isPending: true };
+      return { label: "STAGED_DRAFT", isPending: true, isClosed: false };
     }
     if (s === 4 || s === "closed") {
-      return { label: "OFFLINE", isPending: false };
+      return { label: "OFFLINE", isPending: false, isClosed: true };
     }
     if (s === 5 || s === "rejected") {
-      return { label: "TERMINATED", isPending: false };
+      return { label: "TERMINATED", isPending: false, isClosed: true };
     }
-    return { label: "ONLINE", isPending: false };
+    return { label: "ONLINE", isPending: false, isClosed: false };
   };
+
+  const filteredData = useMemo(() => {
+    return currentData.filter((item) => {
+      const { isClosed } = getStatusInfo(item.status);
+      if (activeTab === "ACTIVE") return !isClosed;
+      if (activeTab === "CLOSED") return isClosed;
+      return true;
+    });
+  }, [currentData, activeTab]);
 
   const executeClose = (id: string) => {
     console.log("Triggering mutation hook for ID:", id);
@@ -121,7 +133,7 @@ export default function MyPostingsScreen() {
   };
 
   const renderItem = ({ item }: { item: Opportunity }) => {
-    const { label, isPending } = getStatusInfo(item.status);
+    const { label, isPending, isClosed } = getStatusInfo(item.status);
     const isClosing = closingId === item.id;
 
     return (
@@ -200,31 +212,33 @@ export default function MyPostingsScreen() {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[
-              styles.closeButton,
-              isDark ? styles.darkCloseButton : styles.lightCloseButton,
-            ]}
-            onPress={() => handleClosePosting(item.id, item.title)}
-            disabled={isClosing}
-            activeOpacity={0.6}
-          >
-            {isClosing ? (
-              <ActivityIndicator size="small" color="#FF3366" />
-            ) : (
-              <>
-                <Ionicons
-                  name="radio-button-off-outline"
-                  size={14}
-                  color="#FF3366"
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.closeButtonText}>DISCONNECT NODE</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+        {!isClosed && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[
+                styles.closeButton,
+                isDark ? styles.darkCloseButton : styles.lightCloseButton,
+              ]}
+              onPress={() => handleClosePosting(item.id, item.title)}
+              disabled={isClosing}
+              activeOpacity={0.6}
+            >
+              {isClosing ? (
+                <ActivityIndicator size="small" color="#FF3366" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="radio-button-off-outline"
+                    size={14}
+                    color="#FF3366"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.closeButtonText}>DISCONNECT NODE</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   };
@@ -233,6 +247,31 @@ export default function MyPostingsScreen() {
     <SafeAreaView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
     >
+      <View style={styles.filterContainer}>
+        {(["ALL", "ACTIVE", "CLOSED"] as FilterTab[]).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[
+              styles.filterTab,
+              activeTab === tab &&
+                (isDark ? styles.activeTabDark : styles.activeTabLight),
+            ]}
+            onPress={() => setActiveTab(tab)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.filterTabText,
+                isDark ? styles.darkSubText : styles.lightSubText,
+                activeTab === tab && styles.activeTabEditText,
+              ]}
+            >
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#00FF66" />
@@ -270,7 +309,7 @@ export default function MyPostingsScreen() {
         </View>
       ) : (
         <FlatList
-          data={currentData}
+          data={filteredData}
           keyExtractor={(item, index) => item.id || index.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
@@ -296,7 +335,7 @@ export default function MyPostingsScreen() {
                   isDark ? styles.darkSubText : styles.lightSubText,
                 ]}
               >
-                NO ACTIVE NETWORK NODES DETECTED.
+                NO NETWORK NODES MATCHING TELEMETRY FILTER.
               </Text>
             </View>
           }
@@ -310,6 +349,36 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
   lightBg: { backgroundColor: "#F4F6F9" },
   darkBg: { backgroundColor: "#030712" },
+  filterContainer: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(156, 163, 175, 0.2)",
+  },
+  activeTabLight: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#006837",
+  },
+  activeTabDark: {
+    backgroundColor: "#111827",
+    borderColor: "#00FF66",
+  },
+  filterTabText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  activeTabEditText: {
+    color: "#00FF66",
+  },
   listContainer: {
     paddingBottom: 32,
     paddingTop: 12,

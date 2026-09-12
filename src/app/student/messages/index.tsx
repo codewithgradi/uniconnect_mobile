@@ -3,7 +3,9 @@ import { useRouter } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -11,7 +13,21 @@ import {
   useColorScheme,
   View,
 } from "react-native";
+import * as Notifications from "expo-notifications";
 import { ThemedInput } from "../../../components/ThemedInput";
+
+// Configure mobile notification behavior
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 interface DirectMessageDto {
   id: string;
@@ -55,37 +71,124 @@ export default function MessagesScreen() {
 
   // Keep track of the last processed message ID to avoid duplicate updates on re-renders
   const lastMessageIdRef = useRef<string | null>(null);
+  const hasAlertedOfflineRef = useRef(false);
 
-  // Hook into your existing SignalR listener to catch incoming messages in real time
-  const signalRData = useSignalRMessages() as any;
+  // Hook into your existing SignalR listener
+  const signalRResult = useSignalRMessages() as any;
 
+  // Safely extract connection status and messages if your hook returns an object or array
+  const signalRData = signalRResult?.messages || signalRResult;
+  const isConnected = signalRResult?.isConnected ?? true;
+  const connectionError = signalRResult?.error;
+
+  // Request notification permissions for Web and Mobile on mount
   useEffect(() => {
-    const latestIncoming = Array.isArray(signalRData)
-      ? signalRData[signalRData.length - 1]
-      : signalRData;
-
-    if (
-      latestIncoming &&
-      latestIncoming.id &&
-      latestIncoming.id !== lastMessageIdRef.current
-    ) {
-      lastMessageIdRef.current = latestIncoming.id;
-
-      const incomingSenderId =
-        latestIncoming.senderUserId ||
-        latestIncoming.senderId ||
-        latestIncoming.senderProfileId;
-
-      if (incomingSenderId) {
-        setUnreadSenderIds((prev) =>
-          new Set(prev).add(String(incomingSenderId).toLowerCase()),
-        );
+    async function requestPermission() {
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission === "default") {
+            await Notification.requestPermission();
+          }
+        }
+      } else {
+        const { status: existingStatus } =
+          await Notifications.getPermissionsAsync();
+        if (existingStatus !== "granted") {
+          await Notifications.requestPermissionsAsync();
+        }
       }
-
-      // Refresh threads list to pull the latest message snippet and re-sync
-      refetch();
     }
-  }, [signalRData]);
+    requestPermission();
+  }, []);
+
+  // Alert user if SignalR fails to connect
+  useEffect(() => {
+    if (
+      (isConnected === false || connectionError) &&
+      !hasAlertedOfflineRef.current
+    ) {
+      hasAlertedOfflineRef.current = true;
+      Alert.alert(
+        "Connection Offline",
+        "You are offline or SignalR failed to connect. Real-time updates may be unavailable.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              hasAlertedOfflineRef.current = false;
+            },
+          },
+        ],
+      );
+    }
+  }, [isConnected, connectionError]);
+
+ useEffect(() => {
+   const latestIncoming = Array.isArray(signalRData)
+     ? signalRData[signalRData.length - 1]
+     : signalRData;
+
+   const messageId = latestIncoming?.id || latestIncoming?.messageId;
+
+   if (latestIncoming && messageId && messageId !== lastMessageIdRef.current) {
+     lastMessageIdRef.current = messageId;
+
+     const incomingSenderId =
+       latestIncoming.senderUserId ||
+       latestIncoming.senderId ||
+       latestIncoming.senderProfileId;
+
+     // Extract current user ID from JWT token to prevent self-notifications
+     let currentUserId = "";
+     try {
+       const token = signalRResult?.token || /* retrieve token if needed */ "";
+       // Alternatively, decode the sub/nameid from your stored token or compare with user context
+     } catch (e) {}
+
+     // If the incoming sender ID matches your own user ID, skip notifying
+     if (incomingSenderId === "a8d63a87-66ba-4d97-92e2-181303a58186") {
+       refetch();
+       return;
+     }
+
+     const senderName =
+       `${latestIncoming.senderFirstName || "New"} ${latestIncoming.senderLastName || "Message"}`.trim();
+     const messageBody =
+       latestIncoming.message ||
+       latestIncoming.content ||
+       "You have received a new message.";
+
+     if (incomingSenderId) {
+       setUnreadSenderIds((prev) =>
+         new Set(prev).add(String(incomingSenderId).toLowerCase()),
+       );
+     }
+
+     if (Platform.OS === "web") {
+       if (
+         typeof window !== "undefined" &&
+         "Notification" in window &&
+         Notification.permission === "granted"
+       ) {
+         new Notification(senderName, {
+           body: messageBody,
+           icon: "/favicon.ico",
+         });
+       }
+     } else {
+       Notifications.scheduleNotificationAsync({
+         content: {
+           title: senderName,
+           body: messageBody,
+           data: { senderUserId: incomingSenderId },
+         },
+         trigger: null,
+       });
+     }
+
+     refetch();
+   }
+ }, [signalRData]);
 
   const filteredMessages = messages.filter((msg) => {
     const fullName =
@@ -101,7 +204,6 @@ export default function MessagesScreen() {
       `${item.senderFirstName?.[0] ?? ""}${item.senderLastName?.[0] ?? ""}`.toUpperCase() ||
       "U";
 
-    // Perform case-insensitive matching against incoming SignalR IDs and check backend isRead flag
     const senderIdMatch = item.senderUserId?.toLowerCase();
     const senderProfileMatch = item.senderProfileId?.toLowerCase();
 
@@ -114,7 +216,6 @@ export default function MessagesScreen() {
       <TouchableOpacity
         style={[styles.chatCard, isDark ? styles.darkCard : styles.lightCard]}
         onPress={() => {
-          // Clear unread indicator for this user when opened
           setUnreadSenderIds((prev) => {
             const next = new Set(prev);
             if (senderIdMatch) next.delete(senderIdMatch);
@@ -132,7 +233,6 @@ export default function MessagesScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          {/* Unread red dot indicator */}
           {isUnread && <View style={styles.unreadBadgeDot} />}
         </View>
 

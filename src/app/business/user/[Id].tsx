@@ -78,11 +78,12 @@ const formatFriendlyDate = (dateString?: string) => {
 
 export default function UserProfileScreen() {
   const isDark = useColorScheme() === "dark";
-  const routeParams = useLocalSearchParams<{ id?: string | string[] }>();
+ const routeParams = useLocalSearchParams<{ id?: string | string[] }>();
+ const profileId = Array.isArray(routeParams.id)
+   ? routeParams.id[0]
+   : (routeParams.id ?? "");
 
-  const profileId = Array.isArray(routeParams.id)
-    ? routeParams.id[0]
-    : (routeParams.id ?? "");
+ console.log("Extracted profileId from URL:", profileId);
 
   const router = useRouter();
   const [isConnected, setIsConnected] = useState(false);

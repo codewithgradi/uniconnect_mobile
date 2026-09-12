@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   useColorScheme,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,8 +18,6 @@ import { useOpportunityWithApplications } from "@/api/hooks/useOpportunity";
 export default function OpportunityDetailScreen() {
   const params = useLocalSearchParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-
-  console.log("Extracted Opportunity ID from route:", id);
 
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
@@ -38,51 +37,63 @@ export default function OpportunityDetailScreen() {
       `${item.firstName} ${item.lastName}`
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      item.systemHeadline.toLowerCase().includes(searchQuery.toLowerCase()),
+      item.systemHeadline?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
- const renderApplicantItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.applicantCard,
-        isDark ? styles.darkCard : styles.lightCard,
-      ]}
-      activeOpacity={0.7}
-      onPress={() => router.push(`/business/user/${item.profileId}` as any)}
-    >
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>
-          {item.firstName?.[0]}
-          {item.lastName?.[0]}
-        </Text>
-      </View>
-      <View style={styles.applicantInfo}>
-        <Text
-          style={[
-            styles.applicantName,
-            isDark ? styles.darkText : styles.lightText,
-          ]}
-        >
-          {item.firstName} {item.lastName}
-        </Text>
-        <Text
-          style={[
-            styles.headline,
-            isDark ? styles.darkSubText : styles.lightSubText,
-          ]}
-          numberOfLines={1}
-        >
-          {item.systemHeadline}
-        </Text>
-        <Text style={styles.programmeText}>{item.aboutBio}</Text>
-      </View>
-      <Ionicons
-        name="chevron-forward"
-        size={18}
-        color={isDark ? "#4B5563" : "#9CA3AF"}
-      />
-    </TouchableOpacity>
-  );
+  const renderApplicantItem = ({ item }: { item: any }) => {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.applicantCard,
+          isDark ? styles.darkCard : styles.lightCard,
+        ]}
+        activeOpacity={0.7}
+        onPress={() => {
+          const applicantId =
+            item.userProfileId || item.profileId || item.userId || item.id;
+
+          if (!applicantId) {
+            Alert.alert("Error", "No valid ID found for this applicant.");
+            return;
+          }
+
+          router.push(`/business/user/${applicantId}` as any);
+        }}
+      >
+        <View style={styles.avatarContainer}>
+          <Text style={styles.avatarText}>
+            {item.firstName?.[0]}
+            {item.lastName?.[0]}
+          </Text>
+        </View>
+        <View style={styles.applicantInfo}>
+          <Text
+            style={[
+              styles.applicantName,
+              isDark ? styles.darkText : styles.lightText,
+            ]}
+          >
+            {item.firstName} {item.lastName}
+          </Text>
+          <Text
+            style={[
+              styles.headline,
+              isDark ? styles.darkSubText : styles.lightSubText,
+            ]}
+            numberOfLines={1}
+          >
+            {item.systemHeadline}
+          </Text>
+          <Text style={styles.programmeText}>{item.aboutBio}</Text>
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={isDark ? "#4B5563" : "#9CA3AF"}
+        />
+      </TouchableOpacity>
+    );
+  };
 
   if (isLoading) {
     return (

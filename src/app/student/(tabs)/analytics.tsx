@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,27 +7,36 @@ import {
   useColorScheme,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Svg, { Rect, Text as SvgText, Line } from "react-native-svg";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useQueryClient } from "@tanstack/react-query";
 import { useStudentAnalytics } from "@/api/hooks/useUserAnalytics";
 
 export default function StudentAnalyticsScreen() {
   const isDark = useColorScheme() === "dark";
   const screenWidth = Dimensions.get("window").width - 72;
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
 
-  // TODO: Replace with the actual logged-in student's user/student ID from your auth state/context
-  const studentId = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+  // Backend automatically identifies the student from the JWT token claims
+  const { data, isLoading, error, refetch } = useStudentAnalytics();
 
-  const { data, isLoading, error } = useStudentAnalytics(studentId);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ["student-analytics"] });
+    await refetch();
+    setRefreshing(false);
+  }, [queryClient, refetch]);
 
   const getMonthlyVelocityData = (
     applications: Array<{ appliedAtUtc: string }>,
   ) => {
     const counts: { [key: string]: number } = {};
 
-    applications.forEach((app) => {
+    applications?.forEach((app) => {
       const date = new Date(app.appliedAtUtc);
       const monthLabel = date.toLocaleString("en-ZA", { month: "short" });
       counts[monthLabel] = (counts[monthLabel] || 0) + 1;
@@ -44,7 +53,7 @@ export default function StudentAnalyticsScreen() {
   const chartHeight = 140;
   const barWidth = 24;
 
-  if (isLoading) {
+  if (isLoading && !refreshing) {
     return (
       <View
         style={[
@@ -62,22 +71,28 @@ export default function StudentAnalyticsScreen() {
 
   if (error || !data) {
     return (
-      <View
-        style={[
+      <ScrollView
+        contentContainerStyle={[
           styles.centerContainer,
+          { flexGrow: 1 },
           isDark ? styles.darkBg : styles.lightBg,
         ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00E599"
+          />
+        }
       >
         <Ionicons name="pulse-outline" size={40} color="#FF5C5C" />
         <Text style={[styles.errorText, { marginTop: 12 }]}>
-          Failed to stream analytics telemetry.
+          Failed to stream analytics telemetry. Pull down to retry.
         </Text>
-      </View>
+      </ScrollView>
     );
   }
 
-  // Calculate connection growth or a secondary metric breakdown from available data fields
-  // Let's create a comparative distribution dataset using active counts for the second graph
   const secondaryGraphData = [
     { label: "Applied Jobs", count: data.appliedJobsCount },
     { label: "Connections", count: data.totalConnections },
@@ -92,8 +107,15 @@ export default function StudentAnalyticsScreen() {
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#00E599"
+        />
+      }
     >
-      {/* Overview Section (3 Cards now instead of 4) */}
+      {/* Overview Section */}
       <Animated.Text
         entering={FadeInDown.duration(400).springify()}
         style={styles.sectionTitle}
@@ -380,8 +402,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
-
-  // Grid Layout
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   statCard: {
     width: "31%",
@@ -410,8 +430,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   statLabel: { fontSize: 11, color: "#64748B", fontWeight: "600" },
-
-  // Graph / Chart Card
   chartCard: {
     padding: 20,
     borderRadius: 20,
@@ -456,12 +474,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
-  // Themes & Dynamic Elements
   lightCard: { backgroundColor: "#FFFFFF", borderColor: "#F1F5F9" },
   darkCard: { backgroundColor: "#111827", borderColor: "#1F2937" },
   lightText: { color: "#0F172A" },
   darkText: { color: "#F8FAFC" },
   mutedText: { color: "#64748B", fontSize: 13, fontWeight: "500" },
-  errorText: { color: "#FF5C5C", fontSize: 13, fontWeight: "600" },
+  errorText: {
+    color: "#FF5C5C",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 });

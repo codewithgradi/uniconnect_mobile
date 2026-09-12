@@ -98,12 +98,19 @@ export default function RegisterScreen() {
               },
             },
           );
+        } else if (isAlumni) {
+          showNotification(
+            "Registration Successful",
+            "Your alumni account has been created successfully. Please verify your certificate.",
+          );
+          router.replace({
+            pathname: "/(auth)/certificate-scanner",
+            params: { email: formData.email, password: formData.password },
+          });
         } else {
           showNotification(
             "Registration Successful",
-            isAlumni
-              ? "Your alumni account has been created successfully."
-              : "Your business account has been created successfully.",
+            "Your business account has been created successfully.",
           );
           router.replace({
             pathname: "/(auth)/login",

@@ -56,6 +56,13 @@ export default function AuthLayout() {
           headerBackTitle: "Back",
         }}
       />
+      <Stack.Screen
+        name="certificate-scanner"
+        options={{
+          // title: "",
+          headerBackTitle: "Back",
+        }}
+      />
     </Stack>
   );
 }

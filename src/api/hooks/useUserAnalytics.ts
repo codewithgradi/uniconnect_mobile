@@ -49,30 +49,30 @@ export const userAnalyticsKeys = {
 
 // --- API Client Methods ---
 export const userAnalyticsApi = {
-  getStudentAnalytics: async (userId: string): Promise<StudentAnalyticsDto> => {
+  getStudentAnalytics: async (): Promise<StudentAnalyticsDto> => {
     const response = await apiClient.get(`/analytics/student`);
     return response.data;
   },
 
-  getBusinessAnalytics: async (userId: string): Promise<BusinessAnalyticsDto> => {
+  getBusinessAnalytics: async (): Promise<BusinessAnalyticsDto> => {
     const response = await apiClient.get(`/analytics/business/`);
     return response.data;
   },
 };
 
 // --- TanStack Query Hooks ---
-export const useStudentAnalytics = (userId: string) => {
+export const useStudentAnalytics = () => {
   return useQuery({
-    queryKey: userAnalyticsKeys.student(userId),
-    queryFn: () => userAnalyticsApi.getStudentAnalytics(userId),
-    enabled: !!userId,
+    queryKey: userAnalyticsKeys.student(),
+    queryFn: () => userAnalyticsApi.getStudentAnalytics(),
+
   });
 };
 
-export const useBusinessAnalytics = (userId: string) => {
+export const useBusinessAnalytics = () => {
   return useQuery({
-    queryKey: userAnalyticsKeys.business(userId),
-    queryFn: () => userAnalyticsApi.getBusinessAnalytics(userId),
-    enabled: !!userId,
+    queryKey: userAnalyticsKeys.business(),
+    queryFn: () => userAnalyticsApi.getBusinessAnalytics(),
+  
   });
 };
