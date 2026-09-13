@@ -25,37 +25,37 @@ export default function BusinessProfileScreen() {
       Linking.openURL(profile.websiteUrl);
     }
   };
-const handleLogout = async () => {
-  const performLogout = async () => {
-    try {
-      console.log("Starting logout process...");
-      await AsyncStorage.removeItem("token");
-      console.log("Token removed, redirecting...");
-      router.replace("/(auth)/login");
-    } catch (error) {
-      console.error("Logout execution error:", error);
-      Alert.alert("Error", "Failed to log out properly.");
+  const handleLogout = async () => {
+    const performLogout = async () => {
+      try {
+        console.log("Starting logout process...");
+        await AsyncStorage.removeItem("token");
+        console.log("Token removed, redirecting...");
+        router.replace("/(auth)/login");
+      } catch (error) {
+        console.error("Logout execution error:", error);
+        Alert.alert("Error", "Failed to log out properly.");
+      }
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
+      if (confirmed) {
+        await performLogout();
+      }
+    } else {
+      Alert.alert("Log Out", "Are you sure you want to log out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: () => {
+            performLogout();
+          },
+        },
+      ]);
     }
   };
-
-  if (Platform.OS === "web") {
-    const confirmed = window.confirm("Are you sure you want to log out?");
-    if (confirmed) {
-      await performLogout();
-    }
-  } else {
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Log Out",
-        style: "destructive",
-        onPress: () => {
-          performLogout();
-        },
-      },
-    ]);
-  }
-};
 
   if (isLoading) {
     return (
@@ -111,6 +111,7 @@ const handleLogout = async () => {
     <ScrollView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
       showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
     >
       {/* Header Profile Card */}
       <View style={styles.header}>
@@ -198,7 +199,8 @@ const handleLogout = async () => {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 54, paddingBottom: 40 },
   centerContainer: {
     flex: 1,
     justifyContent: "center",

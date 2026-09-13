@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
-  TouchableOpacity,
   useColorScheme,
   ActivityIndicator,
 } from "react-native";
@@ -14,7 +13,6 @@ import { useSearchProfiles } from "@/api/hooks/useProfile";
 
 export default function UserManagementScreen() {
   const isDark = useColorScheme() === "dark";
-  const [activeTab, setActiveTab] = useState<"Students" | "Alumni">("Students");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -29,36 +27,11 @@ export default function UserManagementScreen() {
     targetProgramme: undefined,
   });
 
-  const filteredProfiles = useMemo(() => {
-    return profiles.filter((profile: any) => {
-      const userType = (
-        profile.userType ||
-        profile.user?.userType ||
-        profile.role ||
-        profile.user?.role ||
-        profile.type ||
-        ""
-      )
-        .toLowerCase()
-        .trim();
-
-      if (activeTab === "Students") {
-        return userType.includes("student") || userType === "";
-      } else {
-        return (
-          userType.includes("alumni") ||
-          userType.includes("alumnus") ||
-          userType.includes("graduate")
-        );
-      }
-    });
-  }, [profiles, activeTab]);
-
   const paginatedProfiles = useMemo(() => {
-    return filteredProfiles.slice(0, page * pageSize);
-  }, [filteredProfiles, page]);
+    return profiles.slice(0, page * pageSize);
+  }, [profiles, page]);
 
-  const hasMore = paginatedProfiles.length < filteredProfiles.length;
+  const hasMore = paginatedProfiles.length < profiles.length;
 
   const loadMoreItems = () => {
     if (isLoadingMore || !hasMore) return;
@@ -135,33 +108,6 @@ export default function UserManagementScreen() {
         />
       </View>
 
-      {/* Role Filter Tabs */}
-      <View style={styles.tabRow}>
-        {(["Students", "Alumni"] as const).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]}
-            onPress={() => {
-              setActiveTab(tab);
-              setPage(1);
-            }}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === tab
-                  ? styles.activeTabText
-                  : isDark
-                    ? styles.darkTabText
-                    : styles.inactiveTabText,
-              ]}
-            >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Profile List */}
       <FlatList
         data={paginatedProfiles}
@@ -209,7 +155,7 @@ export default function UserManagementScreen() {
                       item.userType ||
                       item.user?.userType ||
                       item.role ||
-                      activeTab}
+                      "User"}
                   </Text>
                 </View>
               </View>
@@ -249,7 +195,7 @@ export default function UserManagementScreen() {
               No Profiles Found
             </Text>
             <Text style={styles.emptySub}>
-              No matching {activeTab.toLowerCase()} profiles were found.
+              No matching profiles were found.
             </Text>
           </View>
         }
@@ -273,21 +219,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   searchInput: { flex: 1, fontSize: 14 },
-  tabRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  tabBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 7,
-    borderRadius: 18,
-    backgroundColor: "#E5E7EB",
-  },
-  activeTabBtn: { backgroundColor: "#006837" },
-  tabText: { fontSize: 12, fontWeight: "600" },
-  activeTabText: { color: "#FFFFFF" },
-  inactiveTabText: { color: "#374151" },
-  darkTabText: { color: "#D1D5DB" },
   userCard: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -155,13 +155,25 @@ export default function MyPostingsScreen() {
             <View
               style={[
                 styles.statusBadge,
-                isPending ? styles.badgePending : styles.badgePublished,
+                isPending
+                  ? isDark
+                    ? styles.badgePendingDark
+                    : styles.badgePendingLight
+                  : isDark
+                    ? styles.badgePublishedDark
+                    : styles.badgePublishedLight,
               ]}
             >
               <Text
                 style={[
                   styles.statusBadgeText,
-                  isPending ? styles.textPending : styles.textPublished,
+                  isPending
+                    ? isDark
+                      ? styles.textPendingDark
+                      : styles.textPendingLight
+                    : isDark
+                      ? styles.textPublishedDark
+                      : styles.textPublishedLight,
                 ]}
               >
                 {label}
@@ -171,7 +183,12 @@ export default function MyPostingsScreen() {
 
           {item.targetProgramme ? (
             <View style={styles.programmeContainer}>
-              <Text style={styles.programmeText}>
+              <Text
+                style={[
+                  styles.programmeText,
+                  isDark ? styles.darkProgrammeText : styles.lightProgrammeText,
+                ]}
+              >
                 // {item.targetProgramme}
               </Text>
             </View>
@@ -187,7 +204,12 @@ export default function MyPostingsScreen() {
             {item.description}
           </Text>
 
-          <View style={styles.cardFooterInfo}>
+          <View
+            style={[
+              styles.cardFooterInfo,
+              isDark ? styles.darkBorder : styles.lightBorder,
+            ]}
+          >
             <View style={styles.footerItem}>
               <Ionicons
                 name="pulse-outline"
@@ -213,7 +235,12 @@ export default function MyPostingsScreen() {
         </TouchableOpacity>
 
         {!isClosed && (
-          <View style={styles.actionRow}>
+          <View
+            style={[
+              styles.actionRow,
+              isDark ? styles.darkBorder : styles.lightBorder,
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.closeButton,
@@ -224,16 +251,28 @@ export default function MyPostingsScreen() {
               activeOpacity={0.6}
             >
               {isClosing ? (
-                <ActivityIndicator size="small" color="#FF3366" />
+                <ActivityIndicator
+                  size="small"
+                  color={isDark ? "#FF3366" : "#DC2626"}
+                />
               ) : (
                 <>
                   <Ionicons
                     name="radio-button-off-outline"
                     size={14}
-                    color="#FF3366"
+                    color={isDark ? "#FF3366" : "#DC2626"}
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={styles.closeButtonText}>DISCONNECT NODE</Text>
+                  <Text
+                    style={[
+                      styles.closeButtonText,
+                      isDark
+                        ? styles.darkCloseButtonText
+                        : styles.lightCloseButtonText,
+                    ]}
+                  >
+                    DISCONNECT NODE
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -248,33 +287,43 @@ export default function MyPostingsScreen() {
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
     >
       <View style={styles.filterContainer}>
-        {(["ALL", "ACTIVE", "CLOSED"] as FilterTab[]).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.filterTab,
-              activeTab === tab &&
-                (isDark ? styles.activeTabDark : styles.activeTabLight),
-            ]}
-            onPress={() => setActiveTab(tab)}
-            activeOpacity={0.7}
-          >
-            <Text
+        {(["ALL", "ACTIVE", "CLOSED"] as FilterTab[]).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <TouchableOpacity
+              key={tab}
               style={[
-                styles.filterTabText,
-                isDark ? styles.darkSubText : styles.lightSubText,
-                activeTab === tab && styles.activeTabEditText,
+                styles.filterTab,
+                isDark ? styles.filterTabDark : styles.filterTabLight,
+                isActive &&
+                  (isDark ? styles.activeTabDark : styles.activeTabLight),
               ]}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
             >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.filterTabText,
+                  isDark ? styles.darkSubText : styles.lightSubText,
+                  isActive &&
+                    (isDark
+                      ? styles.activeTabEditTextDark
+                      : styles.activeTabEditTextLight),
+                ]}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#00FF66" />
+          <ActivityIndicator
+            size="large"
+            color={isDark ? "#00FF66" : "#006837"}
+          />
           <Text
             style={[
               styles.loadingText,
@@ -289,7 +338,7 @@ export default function MyPostingsScreen() {
           <Ionicons
             name="warning-outline"
             size={40}
-            color="#FF3366"
+            color={isDark ? "#FF3366" : "#DC2626"}
             style={{ marginBottom: 8 }}
           />
           <Text
@@ -301,10 +350,20 @@ export default function MyPostingsScreen() {
             TELEMETRY LINK SEVERED
           </Text>
           <TouchableOpacity
-            style={styles.retryButton}
+            style={[
+              styles.retryButton,
+              isDark ? styles.retryButtonDark : styles.retryButtonLight,
+            ]}
             onPress={() => refetch()}
           >
-            <Text style={styles.retryText}>RE-ESTABLISH LINK</Text>
+            <Text
+              style={[
+                styles.retryText,
+                isDark ? styles.retryTextDark : styles.retryTextLight,
+              ]}
+            >
+              RE-ESTABLISH LINK
+            </Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -318,7 +377,7 @@ export default function MyPostingsScreen() {
             <RefreshControl
               refreshing={isFetching && !isLoading}
               onRefresh={refetch}
-              tintColor="#00FF66"
+              tintColor={isDark ? "#00FF66" : "#006837"}
             />
           }
           ListEmptyComponent={
@@ -326,7 +385,7 @@ export default function MyPostingsScreen() {
               <Ionicons
                 name="git-network-outline"
                 size={40}
-                color={isDark ? "#1F2937" : "#E5E7EB"}
+                color={isDark ? "#374151" : "#9CA3AF"}
                 style={{ marginBottom: 8 }}
               />
               <Text
@@ -361,10 +420,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 6,
     borderWidth: 1,
+  },
+  filterTabLight: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+  },
+  filterTabDark: {
+    backgroundColor: "#111827",
     borderColor: "rgba(156, 163, 175, 0.2)",
   },
   activeTabLight: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#E6F4EA",
     borderColor: "#006837",
   },
   activeTabDark: {
@@ -376,7 +442,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1,
   },
-  activeTabEditText: {
+  activeTabEditTextLight: {
+    color: "#006837",
+  },
+  activeTabEditTextDark: {
     color: "#00FF66",
   },
   listContainer: {
@@ -409,10 +478,16 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
   },
-  badgePublished: {
+  badgePublishedLight: {
+    backgroundColor: "#E6F4EA",
+  },
+  badgePublishedDark: {
     backgroundColor: "rgba(0, 255, 102, 0.15)",
   },
-  badgePending: {
+  badgePendingLight: {
+    backgroundColor: "#E0F2FE",
+  },
+  badgePendingDark: {
     backgroundColor: "rgba(0, 229, 255, 0.15)",
   },
   statusBadgeText: {
@@ -421,10 +496,16 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  textPublished: {
+  textPublishedLight: {
+    color: "#006837",
+  },
+  textPublishedDark: {
     color: "#00FF66",
   },
-  textPending: {
+  textPendingLight: {
+    color: "#0369A1",
+  },
+  textPendingDark: {
     color: "#00E5FF",
   },
   programmeContainer: {
@@ -433,9 +514,14 @@ const styles = StyleSheet.create({
   programmeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#00E5FF",
     letterSpacing: 0.5,
     fontFamily: "monospace",
+  },
+  lightProgrammeText: {
+    color: "#0284C7",
+  },
+  darkProgrammeText: {
+    color: "#00E5FF",
   },
   description: {
     fontSize: 12,
@@ -447,8 +533,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "rgba(156, 163, 175, 0.15)",
     paddingTop: 8,
+  },
+  lightBorder: {
+    borderTopColor: "#E5E7EB",
+  },
+  darkBorder: {
+    borderTopColor: "rgba(156, 163, 175, 0.15)",
   },
   footerItem: {
     flexDirection: "row",
@@ -462,7 +553,6 @@ const styles = StyleSheet.create({
   actionRow: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "rgba(156, 163, 175, 0.15)",
     paddingTop: 10,
     alignItems: "flex-end",
   },
@@ -473,23 +563,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "rgba(255, 51, 102, 0.3)",
   },
   lightCloseButton: {
-    backgroundColor: "rgba(255, 51, 102, 0.05)",
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FCA5A5",
   },
   darkCloseButton: {
     backgroundColor: "rgba(255, 51, 102, 0.1)",
+    borderColor: "rgba(255, 51, 102, 0.3)",
   },
   closeButtonText: {
-    color: "#FF3366",
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1,
   },
+  lightCloseButtonText: {
+    color: "#DC2626",
+  },
+  darkCloseButtonText: {
+    color: "#FF3366",
+  },
   lightText: { color: "#111827" },
   darkText: { color: "#F9FAFB" },
-  lightSubText: { color: "#6B7280" },
+  lightSubText: { color: "#4B5563" },
   darkSubText: { color: "#9CA3AF" },
   centered: {
     flex: 1,
@@ -508,7 +604,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 12,
     letterSpacing: 1,
-    color: "#FF3366",
   },
   emptyText: {
     fontSize: 11,
@@ -520,15 +615,26 @@ const styles = StyleSheet.create({
   retryButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#00FF66",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 4,
   },
+  retryButtonLight: {
+    borderColor: "#006837",
+    backgroundColor: "#E6F4EA",
+  },
+  retryButtonDark: {
+    borderColor: "#00FF66",
+  },
   retryText: {
-    color: "#00FF66",
     fontWeight: "800",
     fontSize: 10,
     letterSpacing: 1,
+  },
+  retryTextLight: {
+    color: "#006837",
+  },
+  retryTextDark: {
+    color: "#00FF66",
   },
 });

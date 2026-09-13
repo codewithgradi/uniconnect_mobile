@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "uniconnect_mobile",
-    "slug": "uniconnect_mobile",
+    "name": "UniConnect",
+    "slug": "UniConnect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

@@ -41,18 +41,18 @@ function PendingRequestRow({
   // Fall back to fetching profile if item.requester is null/empty
   const shouldFetchProfile = !item?.requester || !item.requester.firstName;
   const { data: fetchedProfile } = useProfileById(
-    shouldFetchProfile ? item?.requesterId : "",
+    shouldFetchProfile ? item?.requesterProfileId : "",
   );
 
   const requester = item?.requester || fetchedProfile || {};
-  const firstName = requester.firstName || "";
+  const firstName = requester.firstName || requester.firtName || "";
   const lastName = requester.lastName || "";
   const fullName = `${firstName} ${lastName}`.trim() || "Loading User...";
   const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}` || "U";
   const role =
     requester.headline ||
     requester.programme ||
-    requester.institution ||
+    requester.status ||
     "Student / Alum";
 
   return (
@@ -64,7 +64,7 @@ function PendingRequestRow({
           alignItems: "center",
         }}
         onPress={() =>
-          router.push(`/student/profile/${item.requesterId}` as any)
+          router.push(`/student/profile/${item.requesterProfileId}` as any)
         }
       >
         <View style={styles.avatarPlaceholder}>
@@ -112,17 +112,34 @@ export default function NetworkScreen() {
   const queryClient = useQueryClient();
 
   // Queries for real data
-  const { data: requests = [], isLoading: isLoadingRequests } = useQuery({
+  const {
+    data: requests = [],
+    isLoading: isLoadingRequests,
+    refetch: refetchRequests,
+  } = useQuery({
     queryKey: ["connectionRequestsPending"],
     queryFn: getPendingRequests,
   });
 
   // Query for searching profiles directory using the unified custom hook
-  const { data: profiles = [], isLoading: isLoadingProfiles } =
-    useSearchProfiles({
-      searchItem,
-      targetProgramme,
-    });
+  const {
+    data: profiles = [],
+    isLoading: isLoadingProfiles,
+    refetch: refetchProfiles,
+  } = useSearchProfiles({
+    searchItem,
+    targetProgramme,
+  });
+
+  // Handle tab switching with forced refetch
+  const handleTabPress = (tab: "People" | "Requests") => {
+    setActiveTab(tab);
+    if (tab === "Requests") {
+      refetchRequests();
+    } else if (tab === "People") {
+      refetchProfiles();
+    }
+  };
 
   // Mutations for actions
   const acceptMutation = useMutation({
@@ -166,7 +183,7 @@ export default function NetworkScreen() {
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => handleTabPress(tab)}
           >
             <Text
               style={[

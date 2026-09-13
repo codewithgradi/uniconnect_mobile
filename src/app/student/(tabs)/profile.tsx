@@ -113,12 +113,11 @@ export default function StudentProfileScreen() {
         lastName: profile.lastName || "",
         studentNumber: profile.studentNumber || "",
         programme: profile.programme || "",
-        systemHeadline: profile.headline || "",
-        aboutBio: profile.bio || "",
+        systemHeadline: profile.systemHeadline || profile.headline || "",
+        aboutBio: profile.aboutBio || profile.bio || "",
       });
     }
   }, [profile]);
-
   const [expForm, setExpForm] = useState<ExperienceFormState>({
     companyName: "",
     title: "",
@@ -480,7 +479,7 @@ export default function StudentProfileScreen() {
           {profile.firstName} {profile.lastName}
         </Text>
         <Text style={localStyles.subtext}>
-          {profile.headline || "No headline added"}
+          {profile.systemHeadline || "No headline added"}
         </Text>
         <Text style={localStyles.mutedText}>{profile.programme || "N/A"}</Text>
         <Text style={localStyles.mutedText}>
@@ -574,7 +573,7 @@ export default function StudentProfileScreen() {
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text style={localStyles.primaryBtnText}>
-                  Upload to Backend
+                  Upload to Profile
                 </Text>
               )}
             </TouchableOpacity>
@@ -589,7 +588,7 @@ export default function StudentProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {profile.cvFileUrl && !selectedCvFile && (
+          {/* {profile.cvFileUrl && !selectedCvFile && (
             <TouchableOpacity
               style={isDark ? localStyles.dangerBtnDark : localStyles.dangerBtn}
               onPress={handleRemoveCv}
@@ -597,7 +596,7 @@ export default function StudentProfileScreen() {
             >
               <Text style={localStyles.dangerBtnText}>Remove CV</Text>
             </TouchableOpacity>
-          )}
+          )} */}
         </View>
       </View>
 
@@ -616,7 +615,7 @@ export default function StudentProfileScreen() {
           isDark ? localStyles.darkSubtext : localStyles.lightSubtext,
         ]}
       >
-        {profile.bio || "No bio information provided."}
+        {profile.aboutBio || "No bio information provided."}
       </Text>
 
       {/* Skills Section */}

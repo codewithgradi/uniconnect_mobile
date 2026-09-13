@@ -39,6 +39,8 @@ export interface ProfileDto {
   lastName: string;
   studentNumber: string;
   programme: string;
+  systemHeadline?: string;
+  aboutBio?:string;
   headline?: string | null;
   bio?: string | null;
   cvFileUrl?: string | null;

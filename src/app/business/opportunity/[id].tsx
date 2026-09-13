@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   useColorScheme,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -112,10 +113,22 @@ export default function OpportunityDetailScreen() {
         isDark ? styles.darkCard : styles.lightCard,
       ]}
       activeOpacity={0.7}
-      onPress={() => router.push(`business/applicant/${item.applicant.id}` as any)}
+      onPress={() =>
+        router.push(`business/applicant/${item.applicant.id}` as any)
+      }
     >
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>
+      <View
+        style={[
+          styles.avatarContainer,
+          isDark ? styles.avatarDark : styles.avatarLight,
+        ]}
+      >
+        <Text
+          style={[
+            styles.avatarText,
+            isDark ? styles.avatarTextDark : styles.avatarTextLight,
+          ]}
+        >
           {item.applicant.firstName[0]}
           {item.applicant.lastName[0]}
         </Text>
@@ -138,7 +151,14 @@ export default function OpportunityDetailScreen() {
         >
           {item.applicant.systemHeadline}
         </Text>
-        <Text style={styles.programmeText}>{item.applicant.programme}</Text>
+        <Text
+          style={[
+            styles.programmeText,
+            isDark ? styles.programmeDark : styles.programmeLight,
+          ]}
+        >
+          {item.applicant.programme}
+        </Text>
       </View>
       <Ionicons
         name="chevron-forward"
@@ -157,6 +177,7 @@ export default function OpportunityDetailScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderApplicantItem}
         contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
@@ -199,7 +220,10 @@ export default function OpportunityDetailScreen() {
         ListFooterComponent={
           loading ? (
             <View style={styles.loader}>
-              <ActivityIndicator size="small" color="#006837" />
+              <ActivityIndicator
+                size="small"
+                color={isDark ? "#00FF66" : "#006837"}
+              />
             </View>
           ) : null
         }
@@ -210,25 +234,27 @@ export default function OpportunityDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
-  lightBg: { backgroundColor: "#FFFFFF" },
-  darkBg: { backgroundColor: "#111827" },
-  headerContainer: { marginBottom: 4 },
+  lightBg: { backgroundColor: "#F4F6F9" },
+  darkBg: { backgroundColor: "#030712" },
+  headerContainer: { marginBottom: 4, paddingTop: 8 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
     color: "#9CA3AF",
     textTransform: "uppercase",
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   oppInfoBox: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
   },
   oppIdText: {
     fontSize: 12,
     marginBottom: 4,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   sectionHeader: {
     fontSize: 16,
@@ -242,27 +268,37 @@ const styles = StyleSheet.create({
   },
   applicantCard: {
     flexDirection: "row",
-    padding: 12,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
-  darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
+  lightCard: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
+  darkCard: { backgroundColor: "#0B0F19", borderColor: "#1F2937" },
   avatarContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#00683722",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
+  avatarLight: {
+    backgroundColor: "#E6F4EA",
+  },
+  avatarDark: {
+    backgroundColor: "rgba(0, 255, 102, 0.15)",
+  },
   avatarText: {
-    color: "#006837",
     fontWeight: "800",
     fontSize: 15,
+  },
+  avatarTextLight: {
+    color: "#006837",
+  },
+  avatarTextDark: {
+    color: "#00FF66",
   },
   applicantInfo: {
     flex: 1,
@@ -278,13 +314,18 @@ const styles = StyleSheet.create({
   },
   programmeText: {
     fontSize: 11,
-    color: "#006837",
     fontWeight: "700",
     marginTop: 4,
   },
+  programmeLight: {
+    color: "#006837",
+  },
+  programmeDark: {
+    color: "#00FF66",
+  },
   lightText: { color: "#111827" },
-  darkText: { color: "#FFFFFF" },
-  lightSubText: { color: "#6B7280" },
+  darkText: { color: "#F9FAFB" },
+  lightSubText: { color: "#4B5563" },
   darkSubText: { color: "#9CA3AF" },
   loader: { marginVertical: 16 },
 });

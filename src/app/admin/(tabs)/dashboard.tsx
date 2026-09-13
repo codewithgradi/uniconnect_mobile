@@ -165,23 +165,22 @@ export default function AdminDashboardScreen() {
         </View>
 
         <View style={styles.welcomeRow}>
-          <View>
+          <View style={styles.welcomeTextContainer}>
             <Text
               style={[
                 styles.welcomeText,
                 isDark ? styles.darkText : styles.lightText,
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
             >
               Welcome, Admin
             </Text>
-            <Text style={styles.subHeader}>
+            <Text style={styles.subHeader} numberOfLines={1}>
               Real-time platform telemetry & operations
             </Text>
           </View>
           <View style={styles.headerActionRow}>
-            <TouchableOpacity style={styles.profileGlowBtn} activeOpacity={0.8}>
-              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
-            </TouchableOpacity>
             <TouchableOpacity
               style={styles.logoutGlowBtn}
               activeOpacity={0.8}
@@ -218,16 +217,17 @@ export default function AdminDashboardScreen() {
             <View style={styles.quickNavIconBadge}>
               <Ionicons name="calendar-sharp" size={18} color="#10B981" />
             </View>
-            <View>
+            <View style={styles.quickNavTextContainer}>
               <Text
                 style={[
                   styles.quickNavTitle,
                   isDark ? styles.darkText : styles.lightText,
                 ]}
+                numberOfLines={1}
               >
                 Post Institutional Event
               </Text>
-              <Text style={styles.quickNavSubtitle}>
+              <Text style={styles.quickNavSubtitle} numberOfLines={1}>
                 Publish new announcements & schedules
               </Text>
             </View>
@@ -500,6 +500,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
+  welcomeTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
   welcomeText: {
     fontSize: 26,
     fontWeight: "900",
@@ -513,17 +517,7 @@ const styles = StyleSheet.create({
   headerActionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-  },
-  profileGlowBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.25)",
+    flexShrink: 0,
   },
   logoutGlowBtn: {
     width: 44,
@@ -554,6 +548,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    flex: 1,
+    marginRight: 8,
   },
   quickNavIconBadge: {
     width: 36,
@@ -562,6 +558,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.15)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  quickNavTextContainer: {
+    flex: 1,
   },
   quickNavTitle: {
     fontSize: 14,

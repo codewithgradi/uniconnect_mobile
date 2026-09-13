@@ -46,6 +46,7 @@ export interface ProfileDto {
   headline?: string;
   systemHeadline?: string;
   bio?: string;
+  aboutBio?: string;
   programme?: string;
   cvUrl?: string;
   skills?: SkillDto[];
@@ -89,6 +90,10 @@ export default function UserProfileScreen() {
   const [isSending, setIsSending] = useState(false);
 
   const { data: profile, isLoading, error } = useProfileById(profileId);
+
+  // Fallback support for both frontend and backend naming conventions
+  const displayHeadline = profile?.systemHeadline || profile?.headline;
+  const displayBio = profile?.aboutBio || profile?.bio;
 
   const handleMessagePress = () => {
     if (!profile?.id) return;
@@ -200,14 +205,14 @@ export default function UserProfileScreen() {
         >
           {(profile.firstName || "") + " " + (profile.lastName || "")}
         </Text>
-        {profile.headline || "headline has not been updated" ? (
+        {displayHeadline ? (
           <Text
             style={[
               styles.headline,
               isDark ? styles.darkMuted : styles.lightMuted,
             ]}
           >
-            {profile.headline || "headline has not been updated"}
+            {displayHeadline}
           </Text>
         ) : null}
         <Text style={styles.programme}>{profile.programme || "Student"}</Text>
@@ -268,7 +273,7 @@ export default function UserProfileScreen() {
       </View>
 
       {/* About Section */}
-      {profile.bio && (
+      {displayBio ? (
         <View
           style={[
             styles.sectionCard,
@@ -297,10 +302,10 @@ export default function UserProfileScreen() {
               isDark ? styles.darkMuted : styles.lightMuted,
             ]}
           >
-            {profile.bio}
+            {displayBio}
           </Text>
         </View>
-      )}
+      ) : null}
 
       {/* Skills Section */}
       {profile.skills && profile.skills.length > 0 && (
@@ -329,7 +334,7 @@ export default function UserProfileScreen() {
           <View style={styles.skillsContainer}>
             {profile.skills.map((skill: any, index: number) => (
               <View
-                key={index}
+                key={skill.id || index}
                 style={[
                   styles.skillBadge,
                   isDark ? styles.darkSkillBadge : styles.lightSkillBadge,
@@ -341,7 +346,7 @@ export default function UserProfileScreen() {
                     isDark ? styles.darkSkillText : styles.lightSkillText,
                   ]}
                 >
-                  {skill.name || skill}
+                  {typeof skill === "string" ? skill : skill.name || skill.id}
                 </Text>
               </View>
             ))}
@@ -375,7 +380,7 @@ export default function UserProfileScreen() {
           </View>
           {profile.experiences.map((exp: any, index: number) => (
             <View
-              key={index}
+              key={exp.id || index}
               style={[
                 styles.experienceItem,
                 index === profile.experiences!.length - 1 &&
@@ -389,7 +394,7 @@ export default function UserProfileScreen() {
                   isDark ? styles.darkText : styles.lightText,
                 ]}
               >
-                {exp.title}
+                {exp.title || exp.role}
               </Text>
               <Text
                 style={[
@@ -397,11 +402,23 @@ export default function UserProfileScreen() {
                   isDark ? styles.darkMuted : styles.lightMuted,
                 ]}
               >
-                {exp.company}
+                {exp.companyName || exp.company}
               </Text>
+              {exp.location ? (
+                <Text
+                  style={[
+                    styles.expLocation,
+                    isDark ? styles.darkMuted : styles.lightMuted,
+                  ]}
+                >
+                  {exp.location}
+                </Text>
+              ) : null}
               <Text style={styles.expDate}>
                 {formatFriendlyDate(exp.startDate)} –{" "}
-                {exp.current ? "Present" : formatFriendlyDate(exp.endDate)}
+                {exp.isCurrent || exp.current
+                  ? "Present"
+                  : formatFriendlyDate(exp.endDate)}
               </Text>
               {exp.description ? (
                 <Text
@@ -444,7 +461,7 @@ export default function UserProfileScreen() {
           </View>
           {profile.certifications.map((cert: any, index: number) => (
             <View
-              key={index}
+              key={cert.id || index}
               style={[
                 styles.experienceItem,
                 index === profile.certifications!.length - 1 &&
@@ -473,14 +490,16 @@ export default function UserProfileScreen() {
                   Issued {formatFriendlyDate(cert.issueDate)}
                 </Text>
               ) : null}
-              {cert.credentialId ? (
+              {cert.credentialId || cert.credentialUrl ? (
                 <Text
                   style={[
                     styles.expDescription,
                     isDark ? styles.darkMuted : styles.lightMuted,
                   ]}
                 >
-                  Credential ID: {cert.credentialId}
+                  {cert.credentialId
+                    ? `Credential ID: ${cert.credentialId}`
+                    : cert.credentialUrl}
                 </Text>
               ) : null}
             </View>
@@ -711,6 +730,10 @@ const styles = StyleSheet.create({
   expCompany: {
     fontSize: 13,
     fontWeight: "500",
+    marginBottom: 4,
+  },
+  expLocation: {
+    fontSize: 12,
     marginBottom: 4,
   },
   expDate: {

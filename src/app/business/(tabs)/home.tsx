@@ -10,13 +10,12 @@ import {
 } from "react-native";
 import { Href, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useMyBusinessProfile } from "@/api/hooks/useBusiness"; // Updated to business hook
+import { useMyBusinessProfile } from "@/api/hooks/useBusiness";
 
 export default function BusinessDashboardScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
 
-  // Fetching business profile data using the business hook instead of student profile
   const { data: profile, isLoading, error } = useMyBusinessProfile();
 
   if (isLoading) {
@@ -38,6 +37,7 @@ export default function BusinessDashboardScreen() {
     <ScrollView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
       showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
     >
       {/* Welcoming Hero Greeting Banner */}
       <View style={styles.welcomeContainer}>
@@ -185,7 +185,9 @@ export default function BusinessDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: { flex: 1 },
+  // Added proper contentContainer padding for safe spacing instead of flat paddingHorizontal on scrollview
+  scrollContent: { paddingHorizontal: 20, paddingTop: 54, paddingBottom: 40 },
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#111827" },

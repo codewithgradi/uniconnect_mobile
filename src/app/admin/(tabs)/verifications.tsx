@@ -16,6 +16,21 @@ import {
   useApproveOpportunity,
 } from "@/api/hooks/useOpportunity";
 
+// Helper function for user-friendly date formatting
+const formatDate = (dateString: string) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // Fallback if format is unexpected
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 export default function VerificationsScreen() {
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
@@ -108,12 +123,16 @@ export default function VerificationsScreen() {
               </View>
               <View style={styles.metaInfo}>
                 <Ionicons name="location-outline" size={12} color="#6B7280" />
-                <Text style={styles.metaText}>{item.description}</Text>
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {item.description}
+                </Text>
               </View>
             </View>
 
             <View style={styles.footerRow}>
-              <Text style={styles.timeText}>Submitted {item.createdAtUtc}</Text>
+              <Text style={styles.timeText}>
+                Submitted {formatDate(item.createdAtUtc)}
+              </Text>
               <View style={styles.actionGroup}>
                 <TouchableOpacity
                   style={styles.rejectBtn}
@@ -205,31 +224,37 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   badgeText: { fontSize: 11, fontWeight: "700", color: "#0284C7" },
-  metaInfo: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { fontSize: 11, color: "#6B7280" },
+  metaInfo: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
+  metaText: { fontSize: 11, color: "#6B7280", flex: 1 },
   footerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "column", // Changed to stack date and buttons neatly on mobile screens
+    alignItems: "stretch",
+    gap: 10,
     marginTop: 14,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
   },
   timeText: { fontSize: 11, color: "#9CA3AF" },
-  actionGroup: { flexDirection: "row", gap: 8 },
+  actionGroup: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "flex-end", // Aligns action buttons to the right side underneath the date
+  },
   approveBtn: {
     backgroundColor: "#006837",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
+    alignItems: "center",
   },
   approveBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
   rejectBtn: {
     backgroundColor: "#FEE2E2",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
+    alignItems: "center",
   },
   rejectBtnText: { color: "#DC2626", fontSize: 12, fontWeight: "700" },
   emptyContainer: {

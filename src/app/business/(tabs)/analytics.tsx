@@ -33,12 +33,7 @@ export default function BusinessAnalyticsScreen({
   const isDark = useColorScheme() === "dark";
   const screenWidth = Dimensions.get("window").width - 72;
 
-  const {
-    data: apiData,
-    isLoading,
-    error,
-    refetch,
-  } = useBusinessAnalytics(userId);
+  const { data: apiData, isLoading, error, refetch } = useBusinessAnalytics();
 
   const data: BusinessAnalyticsDto | null = apiData ?? null;
 
@@ -69,11 +64,15 @@ export default function BusinessAnalyticsScreen({
           isDark ? styles.darkBg : styles.lightBg,
         ]}
       >
-        <ActivityIndicator size="large" color="#00FF66" />
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#00FF66" : "#006837"}
+        />
         <Text
           style={[
             styles.loadingText,
             isDark ? styles.darkText : styles.lightText,
+            { color: isDark ? "#00FF66" : "#006837" },
           ]}
         >
           SYNCING NEURAL ANALYTICS...
@@ -102,19 +101,36 @@ export default function BusinessAnalyticsScreen({
         <Text style={styles.errorSubText}>
           {error ? error.message : "Data stream disrupted."}
         </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-          <Text style={styles.retryButtonText}>RE-ESTABLISH LINK</Text>
+        <TouchableOpacity
+          style={[
+            styles.retryButton,
+            { borderColor: isDark ? "#00FF66" : "#006837" },
+          ]}
+          onPress={() => refetch()}
+        >
+          <Text
+            style={[
+              styles.retryButtonText,
+              { color: isDark ? "#00FF66" : "#006837" },
+            ]}
+          >
+            RE-ESTABLISH LINK
+          </Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   const funnelData = [
-    { label: "TOTAL", count: data.totalApplicantsReceived, color: "#00E5FF" },
+    {
+      label: "TOTAL",
+      count: data.totalApplicantsReceived,
+      color: isDark ? "#00E5FF" : "#0284C7",
+    },
     {
       label: "SHORTLIST",
       count: data.shortlistedCandidatesCount,
-      color: "#00FF66",
+      color: isDark ? "#00FF66" : "#006837",
     },
   ];
   const maxFunnel = Math.max(...funnelData.map((d) => d.count), 1);
@@ -128,10 +144,18 @@ export default function BusinessAnalyticsScreen({
     <ScrollView
       style={[styles.container, isDark ? styles.darkBg : styles.lightBg]}
       showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
     >
       <Animated.View style={[animatedContainerStyle, { paddingBottom: 32 }]}>
         {/* Core Metrics Grid */}
-        <Text style={styles.sectionTitle}>// CORE_TELEMETRY</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#00E5FF" : "#0284C7" },
+          ]}
+        >
+          // CORE_TELEMETRY
+        </Text>
         <View style={styles.grid}>
           <View
             style={[
@@ -142,10 +166,18 @@ export default function BusinessAnalyticsScreen({
             <View
               style={[
                 styles.iconBadge,
-                { backgroundColor: "rgba(0, 255, 102, 0.1)" },
+                {
+                  backgroundColor: isDark
+                    ? "rgba(0, 255, 102, 0.1)"
+                    : "rgba(0, 104, 55, 0.1)",
+                },
               ]}
             >
-              <Ionicons name="terminal-outline" size={20} color="#00FF66" />
+              <Ionicons
+                name="terminal-outline"
+                size={20}
+                color={isDark ? "#00FF66" : "#006837"}
+              />
             </View>
             <Text
               style={[
@@ -167,10 +199,18 @@ export default function BusinessAnalyticsScreen({
             <View
               style={[
                 styles.iconBadge,
-                { backgroundColor: "rgba(0, 229, 255, 0.1)" },
+                {
+                  backgroundColor: isDark
+                    ? "rgba(0, 229, 255, 0.1)"
+                    : "rgba(2, 132, 199, 0.1)",
+                },
               ]}
             >
-              <Ionicons name="git-network-outline" size={20} color="#00E5FF" />
+              <Ionicons
+                name="git-network-outline"
+                size={20}
+                color={isDark ? "#00E5FF" : "#0284C7"}
+              />
             </View>
             <Text
               style={[
@@ -185,7 +225,14 @@ export default function BusinessAnalyticsScreen({
         </View>
 
         {/* GRAPH 1: Recruitment Funnel */}
-        <Text style={styles.sectionTitle}>// CONVERSION_MATRIX</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#00E5FF" : "#0284C7" },
+          ]}
+        >
+          // CONVERSION_MATRIX
+        </Text>
         <View
           style={[
             styles.chartCard,
@@ -251,7 +298,14 @@ export default function BusinessAnalyticsScreen({
         </View>
 
         {/* GRAPH 2: Listing Performance */}
-        <Text style={styles.sectionTitle}>// NODE_LOAD_ANALYTICS</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#00E5FF" : "#0284C7" },
+          ]}
+        >
+          // NODE_LOAD_ANALYTICS
+        </Text>
         <View
           style={[
             styles.chartCard,
@@ -294,7 +348,7 @@ export default function BusinessAnalyticsScreen({
                     y={y + 4}
                     width={barWidth}
                     height={18}
-                    fill="#00FF66"
+                    fill={isDark ? "#00FF66" : "#006837"}
                     rx="2"
                   />
                   <SvgText
@@ -313,7 +367,14 @@ export default function BusinessAnalyticsScreen({
         </View>
 
         {/* Top Listings Summary Table */}
-        <Text style={styles.sectionTitle}>// ACTIVE_VECTORS</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: isDark ? "#00E5FF" : "#0284C7" },
+          ]}
+        >
+          // ACTIVE_VECTORS
+        </Text>
         <View style={styles.listContainer}>
           {data.topListings.map((listing) => (
             <View
@@ -323,12 +384,13 @@ export default function BusinessAnalyticsScreen({
                 isDark ? styles.darkCard : styles.lightCard,
               ]}
             >
-              <View>
+              <View style={{ flex: 1, marginRight: 12 }}>
                 <Text
                   style={[
                     styles.listingTitle,
                     isDark ? styles.darkText : styles.lightText,
                   ]}
+                  numberOfLines={1}
                 >
                   {listing.title}
                 </Text>
@@ -342,8 +404,12 @@ export default function BusinessAnalyticsScreen({
                   {
                     backgroundColor:
                       listing.status === "Active"
-                        ? "rgba(0, 255, 102, 0.15)"
-                        : "rgba(255, 255, 255, 0.05)",
+                        ? isDark
+                          ? "rgba(0, 255, 102, 0.15)"
+                          : "rgba(0, 104, 55, 0.15)"
+                        : isDark
+                          ? "rgba(255, 255, 255, 0.05)"
+                          : "rgba(0, 0, 0, 0.05)",
                   },
                 ]}
               >
@@ -352,7 +418,11 @@ export default function BusinessAnalyticsScreen({
                     styles.statusText,
                     {
                       color:
-                        listing.status === "Active" ? "#00FF66" : "#9CA3AF",
+                        listing.status === "Active"
+                          ? isDark
+                            ? "#00FF66"
+                            : "#006837"
+                          : "#9CA3AF",
                     },
                   ]}
                 >
@@ -368,19 +438,19 @@ export default function BusinessAnalyticsScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 54, paddingBottom: 40 },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-  lightBg: { backgroundColor: "#F4F6F9" },
+  lightBg: { backgroundColor: "#FFFFFF" },
   darkBg: { backgroundColor: "#030712" },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#00E5FF",
     letterSpacing: 1.5,
     marginTop: 24,
     marginBottom: 10,
@@ -433,7 +503,7 @@ const styles = StyleSheet.create({
   },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   statusText: { fontSize: 9, fontWeight: "800", letterSpacing: 1 },
-  lightCard: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
+  lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#0B0F19", borderColor: "#1F2937" },
   lightText: { color: "#111827" },
   darkText: { color: "#F9FAFB" },
@@ -442,7 +512,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 2,
-    color: "#00FF66",
   },
   errorTitle: {
     fontSize: 16,
@@ -462,13 +531,11 @@ const styles = StyleSheet.create({
   retryButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#00FF66",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 4,
   },
   retryButtonText: {
-    color: "#00FF66",
     fontWeight: "700",
     fontSize: 11,
     letterSpacing: 1,
