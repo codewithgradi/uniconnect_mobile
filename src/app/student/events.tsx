@@ -19,9 +19,7 @@ import {
 export default function EventsScreen() {
   const isDark = useColorScheme() === "dark";
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"Upcoming" | "Today" | "Past">(
-    "Upcoming",
-  );
+  const [activeTab, setActiveTab] = useState<"Upcoming" | "Today">("Upcoming");
   const [visibleCount, setVisibleCount] = useState(10);
 
   const { events, isLoading, isError, refetch, isRefetching } =
@@ -38,39 +36,52 @@ export default function EventsScreen() {
     const time = date.toLocaleTimeString("en-ZA", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
     });
     return { day, time };
   };
 
-  // Filter Logic and Sorting from Latest to Oldest
+  // Helper to extract strict calendar day integer (YYYYMMDD) to prevent timezone drift
+  const getLocalDateKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}${month}${day}`;
+  };
+
+  // Filter Logic and Sorting
   const filteredEvents = events
     .filter((event) => {
       const eventDate = new Date(event.dateUtc);
       const now = new Date();
+
       const matchesSearch =
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const isToday = eventDate.toDateString() === now.toDateString();
-      const isUpcoming = eventDate > now && !isToday;
-      const isPast = eventDate < now && !isToday;
+      const eventKey = parseInt(getLocalDateKey(eventDate), 10);
+      const todayKey = parseInt(getLocalDateKey(now), 10);
+
+      const isToday = eventKey === todayKey;
+      const isUpcoming = eventKey > todayKey;
 
       if (!matchesSearch) return false;
       if (activeTab === "Today") return isToday;
-      if (activeTab === "Upcoming") return isUpcoming || isToday;
-      if (activeTab === "Past") return isPast;
+      if (activeTab === "Upcoming") return isUpcoming;
       return true;
     })
-    .sort(
-      (a, b) => new Date(b.dateUtc).getTime() - new Date(a.dateUtc).getTime(),
-    );
+    .sort((a, b) => {
+      const timeA = new Date(a.dateUtc).getTime();
+      const timeB = new Date(b.dateUtc).getTime();
+      return timeA - timeB; // Sort soonest upcoming first
+    });
 
   // Paginated subset based on scroll visibility
   const paginatedEvents = filteredEvents.slice(0, visibleCount);
 
   const handleLoadMore = () => {
     if (visibleCount < filteredEvents.length) {
-      setVisibleCount((prev) => prev + 10);
+      setVisibleCount((prev) => Math.min(prev + 10, filteredEvents.length));
     }
   };
 
@@ -102,13 +113,6 @@ export default function EventsScreen() {
         <Text style={styles.description} numberOfLines={3}>
           {description}
         </Text>
-
-        <View style={styles.cardFooter}>
-          <TouchableOpacity style={styles.actionBtn}>
-            <Text style={styles.actionBtnText}>View Details</Text>
-            <Ionicons name="chevron-forward" size={16} color="#006837" />
-          </TouchableOpacity>
-        </View>
       </View>
     );
   };
@@ -166,7 +170,7 @@ export default function EventsScreen() {
 
       {/* Filter Tabs */}
       <View style={styles.tabRow}>
-        {(["Upcoming", "Today", "Past"] as const).map((tab) => (
+        {(["Upcoming", "Today"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[
@@ -201,12 +205,12 @@ export default function EventsScreen() {
       {/* Events List with Lazy Loading */}
       <FlatList
         data={paginatedEvents}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         renderItem={renderEventCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.3}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -255,7 +259,7 @@ const styles = StyleSheet.create({
   activeTabChip: { backgroundColor: "#006837", borderColor: "#006837" },
   tabText: { fontSize: 13, fontWeight: "600" },
   activeTabText: { color: "#FFFFFF" },
-  listContent: { paddingBottom: 24 },
+  listContent: { paddingBottom: 24, flexGrow: 1 },
   card: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 14 },
   lightCard: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
@@ -279,21 +283,12 @@ const styles = StyleSheet.create({
   timeBadgeText: { color: "#6B7280", fontSize: 12, fontWeight: "500" },
   title: { fontSize: 16, fontWeight: "700", marginBottom: 6 },
   description: { color: "#6B7280", fontSize: 14, lineHeight: 20 },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB33",
-  },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  actionBtnText: { color: "#006837", fontSize: 13, fontWeight: "600" },
   footerLoader: {
     paddingVertical: 16,
     alignItems: "center",
   },
   emptyContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 60,

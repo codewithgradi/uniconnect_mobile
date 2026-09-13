@@ -35,13 +35,12 @@ export const institutionalApi = {
     const rawData = Array.isArray(response.data)
       ? response.data
       : response.data?.items || response.data?.data || [];
-
     // Normalize properties so components never encounter undefined fields
     return rawData.map((item: any) => ({
       id: item.id || item.Id || Math.random().toString(),
       title: item.title || item.Title || "Untitled Event",
       description: item.description || item.Description || "",
-      dateUtc: item.dateUtc || item.DateUtc || new Date().toISOString(),
+      dateUtc: item.eventDate || item.DateUtc || new Date().toISOString(),
       location: item.location || item.Location,
       createdAtUtc: item.createdAtUtc || item.CreatedAtUtc,
     }));

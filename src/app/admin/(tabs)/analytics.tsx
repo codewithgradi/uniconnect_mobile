@@ -136,9 +136,9 @@ export default function AdminAnalyticsScreen() {
 
   // --- Graph 3 Helper: User Breakdown Bars ---
   const userData = [
-    { label: "Students", val: data.totalStudents, color: "#3B82F6" },
+    { label: "Admins", val: data.totalStudents, color: "#3B82F6" },
     { label: "Business", val: data.totalBusinesses, color: "#10B981" },
-    { label: "Admins", val: data.totalAdmins, color: "#64748B" },
+    { label: "Students / Alumnis", val: data.totalAdmins, color: "#64748B" },
   ];
   const maxUser = Math.max(...userData.map((d) => d.val), 1);
 

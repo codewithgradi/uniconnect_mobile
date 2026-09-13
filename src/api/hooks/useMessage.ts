@@ -160,7 +160,7 @@ export function useSignalRMessages(otherUserId?: string) {
         const token = await AsyncStorage.getItem("accessToken");
 
         connection = new HubConnectionBuilder()
-          .withUrl(`http://192.168.10.111:5116/hubs/chat`, {
+          .withUrl(`https://uniconnect-1nit.onrender.com/hubs/chat`, {
             accessTokenFactory: () => token || "",
           })
           .withAutomaticReconnect()
