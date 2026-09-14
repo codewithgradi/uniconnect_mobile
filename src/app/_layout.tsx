@@ -17,11 +17,15 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
    
   return (
+
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
+            <Stack.Screen name="business" />
+            <Stack.Screen name="admin" />
+            <Stack.Screen name="student" />
           </Stack>
         </SafeAreaProvider>
       </QueryClientProvider>
