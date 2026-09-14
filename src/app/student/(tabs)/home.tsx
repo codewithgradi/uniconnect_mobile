@@ -9,9 +9,45 @@ import {
   View,
 } from "react-native";
 import { useLogout } from "@/api/hooks/useAuth";
+import { useTourGuide } from "@wrack/react-native-tour-guide";
+import QuickTutorial from "@/components/QuickTutorial";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function StudentHomeScreen() {
   const isDark = useColorScheme() === "dark";
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // 2. PASTE YOUR USEEFFECT AND HANDLER CODE RIGHT HERE:
+  useEffect(() => {
+    async function checkFirstTimeUser() {
+      try {
+        const hasSeenTutorial =
+          await AsyncStorage.getItem("@has_seen_tutorial");
+        if (!hasSeenTutorial) {
+          setShowTutorial(true);
+        }
+      } catch (error) {
+        console.error("Failed to load tutorial state", error);
+      }
+    }
+    checkFirstTimeUser();
+  }, []);
+
+  const handleCloseTutorial = async () => {
+    setShowTutorial(false);
+    try {
+      await AsyncStorage.setItem("@has_seen_tutorial", "true");
+    } catch (error) {
+      console.error("Failed to save tutorial state", error);
+    }
+  };
+
+  // Inside your return:
+  <QuickTutorial
+    visible={showTutorial}
+    onClose={() => setShowTutorial(false)}
+  />;
   const router = useRouter();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
 

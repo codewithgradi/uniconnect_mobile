@@ -1,10 +1,19 @@
+import api from "@/api/axiosInstance";
 import apiClient from "@/api/axiosInstance";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker"; // Make sure this is imported
+import { Platform } from "react-native";
+import { BASE_URL } from "../client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+export interface CreatePostInput {
+  content: string;
+  media?: ImagePicker.ImagePickerAsset | null;
+}
 export interface AuthorDto {
   id: string;
   firstName: string;
@@ -33,6 +42,8 @@ export interface PostDto {
   userReactionType?: string;
   comments?: CommentDto[];
   isLiked: boolean;
+  mediaUrl?:string;
+  mediaType?:String;
 }
 
 export interface PagedResult<T> {
@@ -81,6 +92,8 @@ export interface PostUI {
   userEmail: string;
   likeCount: number;
   commentCount: number;
+  mediaUrl?: string;
+  mediaType?: String;
 }
 
 /**
@@ -233,14 +246,61 @@ export function usePosts() {
       });
     },
   });
+const createPostMutation = useMutation({
+  mutationFn: async (input: CreatePostInput) => {
+    const formData = new FormData();
+    formData.append("Content", String(input.content ?? "").trim());
 
-  const createPostMutation = useMutation({
-    mutationFn: (request: { content: string }) => createPost(request),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
-    },
-  });
+    if (input.media?.uri) {
+      if (Platform.OS === "web") {
+        const response = await fetch(input.media.uri);
+        const blob = await response.blob();
+        const fileName =
+          input.media.fileName ||
+          `upload.${input.media.type === "video" ? "mp4" : "jpg"}`;
+        formData.append("MediaFile", blob, fileName);
+      } else {
+        const uriParts = input.media.uri.split(".");
+        const fileExtension =
+          uriParts[uriParts.length - 1] ||
+          (input.media.type === "video" ? "mp4" : "jpg");
 
+        formData.append("MediaFile", {
+          uri: input.media.uri,
+          name: `upload.${fileExtension}`,
+          type:
+            input.media.type === "video"
+              ? `video/${fileExtension}`
+              : `image/${fileExtension}`,
+        } as any);
+      }
+    }
+
+    // Retrieve token manually for fetch
+    let token = await AsyncStorage.getItem("accessToken");
+    token = token ? token.replace(/^"(.*)"$/, "$1").trim() : null;
+
+    const res = await fetch(`${BASE_URL}posts`, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // Do NOT set Content-Type here; fetch automatically generates
+        // the correct multipart/form-data boundary header.
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return await res.json();
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["posts"] });
+  },
+});
   const addCommentMutation = useMutation({
     mutationFn: ({ postId, content }: { postId: string; content: string }) =>
       addComment(postId, { content }),

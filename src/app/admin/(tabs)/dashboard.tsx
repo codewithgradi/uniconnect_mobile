@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
   Easing,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +15,7 @@ import {
 } from "react-native";
 import Svg, { Path, Circle, Line } from "react-native-svg";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAdminAnalytics } from "@/api/hooks/useAdminAnalytics";
 import { useLogout } from "@/api/hooks/useAuth";
 
@@ -23,6 +25,34 @@ export default function AdminDashboardScreen() {
   const { data: apiData, isLoading, isError, refetch } = useAdminAnalytics();
 
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
+
+  // State for the one-time welcome tutorial modal
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    async function checkFirstTimeUser() {
+      try {
+        const hasSeenTutorial = await AsyncStorage.getItem(
+          "@admin_has_seen_tutorial",
+        );
+        if (!hasSeenTutorial) {
+          setShowTutorial(true);
+        }
+      } catch (error) {
+        console.error("Failed to load tutorial state", error);
+      }
+    }
+    checkFirstTimeUser();
+  }, []);
+
+  const handleCloseTutorial = async () => {
+    setShowTutorial(false);
+    try {
+      await AsyncStorage.setItem("@admin_has_seen_tutorial", "true");
+    } catch (error) {
+      console.error("Failed to save tutorial state", error);
+    }
+  };
 
   const chartWidth = Dimensions.get("window").width - 72;
 
@@ -143,6 +173,27 @@ export default function AdminDashboardScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
+      {/* ONE-TIME TUTORIAL / WELCOME MODAL */}
+      <Modal visible={showTutorial} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>⚡ Admin Telemetry Core</Text>
+            <Text style={styles.modalText}>
+              • View live platform analytics and active user growth metrics.
+              {"\n\n"}• Monitor pending business verifications and system
+              approvals.{"\n\n"}• Publish institutional events quickly using the
+              quick nav link below.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleCloseTutorial}
+            >
+              <Text style={styles.modalButtonText}>Initialize Dashboard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Futuristic Header & HUD Status Bar */}
       <Animated.View
         style={{
@@ -455,6 +506,44 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 12,
   },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: "#111827",
+    padding: 24,
+    borderRadius: 16,
+    width: "100%",
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#F8FAFC",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: "#10B981",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalButtonText: { color: "#FFF", fontWeight: "800", fontSize: 14 },
 
   // HUD Elements
   hudBar: {

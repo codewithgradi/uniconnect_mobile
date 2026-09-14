@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   useColorScheme,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Href, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMyBusinessProfile } from "@/api/hooks/useBusiness";
 
 export default function BusinessDashboardScreen() {
@@ -17,6 +19,34 @@ export default function BusinessDashboardScreen() {
   const router = useRouter();
 
   const { data: profile, isLoading, error } = useMyBusinessProfile();
+
+  // State for the one-time welcome tutorial modal
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    async function checkFirstTimeUser() {
+      try {
+        const hasSeenTutorial = await AsyncStorage.getItem(
+          "@business_has_seen_tutorial",
+        );
+        if (!hasSeenTutorial) {
+          setShowTutorial(true);
+        }
+      } catch (err) {
+        console.error("Failed to load tutorial state", err);
+      }
+    }
+    checkFirstTimeUser();
+  }, []);
+
+  const handleCloseTutorial = async () => {
+    setShowTutorial(false);
+    try {
+      await AsyncStorage.setItem("@business_has_seen_tutorial", "true");
+    } catch (err) {
+      console.error("Failed to save tutorial state", err);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -39,6 +69,27 @@ export default function BusinessDashboardScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
+      {/* ONE-TIME TUTORIAL / WELCOME MODAL */}
+      <Modal visible={showTutorial} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🏢 Business Portal Hub</Text>
+            <Text style={styles.modalText}>
+              • Post new jobs and manage internships efficiently.{"\n\n"}•
+              Review active opportunities and shortlist specialized tech talent.
+              {"\n\n"}• Connect directly with candidates via integrated
+              messaging.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleCloseTutorial}
+            >
+              <Text style={styles.modalButtonText}>Get Started</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Welcoming Hero Greeting Banner */}
       <View style={styles.welcomeContainer}>
         <Text
@@ -332,4 +383,40 @@ const styles = StyleSheet.create({
   darkCard: { backgroundColor: "#1F2937", borderColor: "#374151" },
   lightText: { color: "#111827" },
   darkText: { color: "#FFFFFF" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: "#111827",
+    padding: 24,
+    borderRadius: 16,
+    width: "100%",
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: "rgba(0, 104, 55, 0.4)",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#F8FAFC",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: "#006837",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalButtonText: { color: "#FFF", fontWeight: "800", fontSize: 14 },
 });

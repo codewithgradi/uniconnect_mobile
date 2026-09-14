@@ -35,6 +35,7 @@ interface DirectMessageDto {
   senderProfileId: string;
   senderFirstName: string;
   senderLastName: string;
+  CompanyName?: string;
   message: string;
   isRead?: boolean;
 }

@@ -710,11 +710,11 @@ export default function StudentProfileScreen() {
               >
                 {exp.title || exp.role}
               </Text>
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 onPress={() => handleDeleteExperienceSubmit(exp.id)}
               >
                 <Text style={localStyles.deleteText}>Remove</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
             <Text style={localStyles.subtext}>{exp.companyName}</Text>
             {exp.location ? (
@@ -766,11 +766,11 @@ export default function StudentProfileScreen() {
               >
                 {cert.name || cert.title}
               </Text>
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 onPress={() => handleDeleteCertificationSubmit(cert.id)}
               >
                 <Text style={localStyles.deleteText}>Remove</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
             <Text style={localStyles.subtext}>{cert.issuingOrganization}</Text>
             <Text style={localStyles.mutedText}>

@@ -42,6 +42,8 @@ export interface ProfileDto {
   systemHeadline?: string;
   aboutBio?:string;
   headline?: string | null;
+  gitHubUrl?:string;
+  isVerified:string;
   bio?: string | null;
   cvFileUrl?: string | null;
   experiences?: ExperienceDto[];

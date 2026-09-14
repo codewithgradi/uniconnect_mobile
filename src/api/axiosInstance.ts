@@ -12,7 +12,6 @@ const api = axios.create({
 
 api.interceptors.request.use(
   async (config) => {
-    
     let token = await AsyncStorage.getItem("accessToken");
     console.log("Outgoing Request to:", config.url);
     console.log("Token retrieved from AsyncStorage:", token);
@@ -25,6 +24,11 @@ api.interceptors.request.use(
       config.headers.set
         ? config.headers.set("Authorization", `Bearer ${token}`)
         : (config.headers.Authorization = `Bearer ${token}`);
+    }
+
+    // Use duck-typing (.append check) to reliably catch FormData on both Web and Native
+    if (config.data && typeof config.data.append === "function") {
+      config.headers.delete("Content-Type");
     }
 
     return config;
