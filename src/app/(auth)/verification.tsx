@@ -112,7 +112,7 @@ export default function EmailVerificationScreen() {
 
       <View style={styles.form}>
         <ThemedInput
-          placeholder="6-Digit Verification Code"
+          placeholder="6-Digit"
           value={otp}
           onChangeText={setotp}
           keyboardType="number-pad"
