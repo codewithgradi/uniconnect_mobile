@@ -98,7 +98,7 @@ export default function BusinessDashboardScreen() {
       >
         <TouchableOpacity
           style={styles.actionRow}
-          onPress={() => router.push("/business/post-opportunity")}
+          onPress={() => router.push("/business/post-opportunity" as Href)}
         >
           <View style={styles.rowLeft}>
             <View style={styles.actionIconContainer}>
@@ -152,6 +152,38 @@ export default function BusinessDashboardScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
         </TouchableOpacity>
+
+        <View
+          style={[
+            styles.divider,
+            isDark ? styles.darkDivider : styles.lightDivider,
+          ]}
+        />
+
+        <TouchableOpacity
+          style={styles.actionRow}
+          onPress={() => router.push("/business/messages" as Href)}
+        >
+          <View style={styles.rowLeft}>
+            <View style={styles.actionIconContainer}>
+              <Ionicons name="chatbubbles" size={18} color="#006837" />
+            </View>
+            <View>
+              <Text
+                style={[
+                  styles.rowText,
+                  isDark ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Messages
+              </Text>
+              <Text style={styles.rowSubText}>
+                Chat with prospective candidates
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+        </TouchableOpacity>
       </View>
 
       {/* Platform Highlight Banner */}
@@ -186,7 +218,6 @@ export default function BusinessDashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  // Added proper contentContainer padding for safe spacing instead of flat paddingHorizontal on scrollview
   scrollContent: { paddingHorizontal: 20, paddingTop: 54, paddingBottom: 40 },
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   lightBg: { backgroundColor: "#FFFFFF" },

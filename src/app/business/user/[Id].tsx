@@ -94,7 +94,7 @@ export default function UserProfileScreen() {
   const handleMessagePress = () => {
     if (!profile?.id) return;
     router.push({
-      pathname: "student/messages/[id]" as any,
+      pathname: "business/messages/[id]" as any,
       params: {
         id: profile.id,
         name: (profile.firstName || "") + " " + (profile.lastName || ""),
@@ -201,7 +201,7 @@ export default function UserProfileScreen() {
         >
           {(profile.firstName || "") + " " + (profile.lastName || "")}
         </Text>
-        {profile.headline || "headline has not been updated" ? (
+        {profile.systemHeadline || "headline has not been updated" ? (
           <Text
             style={[
               styles.headline,
@@ -269,7 +269,7 @@ export default function UserProfileScreen() {
       </View>
 
       {/* About Section */}
-      {profile.bio && (
+      {profile.aboutBio && (
         <View
           style={[
             styles.sectionCard,

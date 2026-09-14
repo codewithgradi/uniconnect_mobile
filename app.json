@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "uniconnectmobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -48,7 +48,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "59046e51-963f-41e7-ad3e-8bb3feb9047b"
+        "projectId": "4ef71d4c-93c4-44a5-b384-5a8129ad630d"
       }
     }
   }
